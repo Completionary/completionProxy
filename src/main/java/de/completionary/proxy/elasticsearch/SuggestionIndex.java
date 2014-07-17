@@ -4,27 +4,41 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexResponse;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.Requests;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
+import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 public class SuggestionIndex {
+	public class SuggestionField {
+		public final String output;
+		public final List<String> input;
+		public final String payload;
+
+		public SuggestionField(final String output, final List<String> input,
+				final String payload) {
+			this.output = output;
+			this.input = input;
+			this.payload = payload;
+		}
+	}
+
 	/*
 	 * The es index identifying this suggestion index
 	 */
@@ -43,11 +57,11 @@ public class SuggestionIndex {
 
 		synchronized (nodeMutex) {
 			if (client == null) {
-				boolean isClient = false;
+				boolean isClient = true;
 				node = nodeBuilder().clusterName("completionaryCluster")
 						.client(isClient).node();
 				client = node.client();
-				waitForGreen();
+				// waitForGreen();
 			}
 		}
 	}
@@ -59,20 +73,28 @@ public class SuggestionIndex {
 		createIndexIfNotExists(index);
 
 		addMapping(index, TYPE);
-		String[] input = { "NI" };
+		String[] input = { "NI", "NA" };
 
+		for (String s : input) {
+			addSingleTerm(Arrays.asList(s), s, s);
+		}
+
+		/*******************************************************************/
+		// on shutdown
+		node.close();
+	}
+
+	/**
+	 * Adds a list of SuggestionFields (terms) to the DB within one single bulk
+	 * request and refreshes the index afterwards.
+	 * 
+	 * @throws IOException
+	 */
+	public void addTerms(final List<SuggestionField> terms) throws IOException {
 		BulkRequestBuilder bulkRequest = client.prepareBulk();
-		for (int i = 0; i < input.length; i++) {
-
-			XContentBuilder b = jsonBuilder().startObject()
-					.field(NAME_FIELD, input[i]).startObject(SUGGEST_FIELD)
-					.startArray("input").value(input[i]).endArray()
-					.field("output", input[i])
-					.field("payload", input[i] + "payload").field("weight", 1)
-					.endObject().endObject();
-
-			System.out.println(b.string());
-			bulkRequest.add(client.prepareIndex(index, TYPE).setSource(b));
+		for (SuggestionField field : terms) {
+			bulkRequest.add(client.prepareIndex(index, TYPE).setSource(
+					generateFieldJS(field.input, field.output, field.payload)));
 		}
 		BulkResponse bulkResponse = bulkRequest.setRefresh(true).execute()
 				.actionGet();
@@ -84,22 +106,32 @@ public class SuggestionIndex {
 		} else {
 			findSuggestionsFor("n", 5);
 		}
-
-		/*******************************************************************/
-		// on shutdown
-		node.close();
 	}
 
-	public void addSingleTerm(String term) throws IOException {
-		XContentBuilder b = jsonBuilder().startObject().field(NAME_FIELD, term)
-				.startObject(SUGGEST_FIELD).startArray("input").value(term)
-				.endArray().field("output", term)
-				.field("payload", term + "payload").field("weight", 1)
-				.endObject().endObject();
+	/**
+	 * Adds a single term (SuggestionField) to the DB and refreshes the index.
+	 * 
+	 * @throws IOException
+	 */
+	public void addSingleTerm(final List<String> inputs, final String output,
+			final String payload) throws IOException {
+		client.prepareIndex(index, TYPE)
+				.setSource(generateFieldJS(inputs, output, payload))
+				.setRefresh(true).execute().actionGet();
+	}
 
-		System.out.println(b.string());
-		client.prepareIndex(index, TYPE).setSource(b).setRefresh(true)
-				.execute().actionGet();
+	private XContentBuilder generateFieldJS(final List<String> inputs,
+			final String output, final String payload) throws IOException {
+		XContentBuilder b = jsonBuilder().startObject()
+				.field(NAME_FIELD, output).startObject(SUGGEST_FIELD)
+				.startArray("input");
+
+		for (String input : inputs) {
+			b.value(input);
+		}
+		b.endArray().field("output", output).field("payload", payload)
+				.field("weight", 1).endObject().endObject();
+		return b;
 	}
 
 	/**
@@ -173,9 +205,12 @@ public class SuggestionIndex {
 	private void createIndexIfNotExists(String index)
 			throws ExecutionException, InterruptedException {
 		try {
-			client.admin().indices().create(new CreateIndexRequest(index)).get();
-			Thread.sleep(1000);
-			waitForYellow();
+			CreateIndexResponse response = client.admin().indices()
+					.create(new CreateIndexRequest(index)).get();
+
+			if (!response.isAcknowledged()) {
+				System.err.println("Unable to create index " + index);
+			}
 		} catch (ExecutionException e) {
 			// Ignore IndexAlreadyExistsExceptions
 			if (!((e.getCause().getCause()) instanceof IndexAlreadyExistsException)) {
@@ -198,27 +233,22 @@ public class SuggestionIndex {
 		final DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest(
 				index);
 
-		final DeleteIndexResponse deleteIndexResponse = this.client.admin()
-				.indices().delete(deleteIndexRequest).actionGet();
-
-		if (!deleteIndexResponse.isAcknowledged()) {
-			System.err.println("Index " + index + " not deleted");
-		} else {
-			System.err.println("Index " + index + " deleted");
+		try {
+			client.admin().indices().delete(deleteIndexRequest).get();
+		} catch (ExecutionException e) {
+			// Ignore IndexMissingException
+			if (!((e.getCause().getCause()) instanceof IndexMissingException)) {
+				throw e;
+			}
 		}
-
-//		client.admin().indices().delete(Requests.deleteIndexRequest(index))
-//				.get();
-		waitForYellow();
 	}
 
 	private void waitForYellow() {
-		client.admin().cluster().prepareHealth().setIndices(index)
-				.setWaitForYellowStatus().execute().actionGet();
+		client.admin().cluster().prepareHealth().setIndices(index);
 	}
 
 	private void waitForGreen() {
 		client.admin().cluster().prepareHealth().setIndices(index)
-				.setWaitForYellowStatus().execute().actionGet();
+				.setWaitForGreenStatus().execute().actionGet();
 	}
 }
