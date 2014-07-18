@@ -1,12 +1,11 @@
 package de.completionary.proxy;
 
-import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
-
-import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
 
-import org.elasticsearch.common.xcontent.XContentBuilder;
+import net.minidev.json.JSONObject;
+import net.minidev.json.JSONStyle;
+
 import org.zeromq.ZMQ;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
@@ -14,13 +13,15 @@ import de.completionary.proxy.structs.Suggestion;
 
 public class Main {
 
+    static boolean running = true;
+
     public static void main(String[] args) {
 
         SuggestionIndex client = new SuggestionIndex("index");
 
         ZMQ.Context context = ZMQ.context(1);
 
-        //  Socket to talk to server
+        // Socket to talk to server
         System.out.println("Connecting to hello world server…");
 
         ZMQ.Socket inSocket = context.socket(ZMQ.PULL);
@@ -29,13 +30,11 @@ public class Main {
         ZMQ.Socket outSocket = context.socket(ZMQ.PUSH);
         outSocket.connect("tcp://localhost:9242");
 
-        while (true) {
+        while (running) {
 
             /*
-             * All messages are 3-part messages in the form of:
-             * message_type
-             * session_id
-             * data
+             * All messages are 3-part messages in the form of: message_type
+             * session_id data
              */
             byte[] msgBuffer = inSocket.recv(0);
             String msg = new String(msgBuffer);
@@ -47,30 +46,23 @@ public class Main {
             if (msg.equals("message")) {
                 List<Suggestion> suggestions =
                         client.findSuggestionsFor(data, 15);
+                // List<Suggestion> suggestions = new ArrayList<Suggestion>();
+                // suggestions.add(new Suggestion("string", "payload"));
+                // suggestions.add(new Suggestion("string2", "payload2"));
 
-                try {
-                    XContentBuilder json =
-                            jsonBuilder().startObject().startArray(
-                                    "suggestionList");
+                JSONObject builder = new JSONObject();
+                builder.put("suggestionList", suggestions);
 
-                    for (Suggestion s : suggestions) {
-                        json.value(s.suggestion);
-                    }
-                    json.endArray().endObject();
-                    outSocket.send(msgBuffer, ZMQ.SNDMORE); // Send "message"
-                    outSocket.send(idBuffer, ZMQ.SNDMORE); // Send "ID"
-                    outSocket.send(json.string());
-                    System.out.println(json.string());
-
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    break;
-                }
+                outSocket.send(msgBuffer, ZMQ.SNDMORE); // Send "message"
+                outSocket.send(idBuffer, ZMQ.SNDMORE); // Send "ID"
+                outSocket.send(builder
+                        .toJSONString(/* JSONStyle.MAX_COMPRESS */));
+                System.out
+                        .println(builder.toJSONString(JSONStyle.MAX_COMPRESS));
 
             }
         }
         inSocket.close();
         context.term();
-
     }
 }

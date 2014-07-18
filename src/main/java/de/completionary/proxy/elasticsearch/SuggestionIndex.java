@@ -67,7 +67,7 @@ public class SuggestionIndex {
          */
         synchronized (nodeMutex) {
             if (client == null) {
-                boolean isClient = false;
+                boolean isClient = true;
                 node =
                         nodeBuilder().clusterName("completionaryCluster")
                                 .client(isClient).node();
