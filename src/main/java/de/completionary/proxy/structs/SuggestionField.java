@@ -1,4 +1,4 @@
-package de.completionary.proxy.elasticsearch;
+package de.completionary.proxy.structs;
 
 import java.util.List;
 
