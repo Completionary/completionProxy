@@ -26,19 +26,6 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 public class SuggestionIndex {
-	public class SuggestionField {
-		public final String output;
-		public final List<String> input;
-		public final String payload;
-
-		public SuggestionField(final String output, final List<String> input,
-				final String payload) {
-			this.output = output;
-			this.input = input;
-			this.payload = payload;
-		}
-	}
-
 	/*
 	 * The es index identifying this suggestion index
 	 */
@@ -76,7 +63,7 @@ public class SuggestionIndex {
 		String[] input = { "NI", "NA" };
 
 		for (String s : input) {
-			addSingleTerm(Arrays.asList(s), s, s);
+			addSingleTerm(Arrays.asList(s), s, s, 1);
 		}
 
 		/*******************************************************************/
@@ -94,7 +81,8 @@ public class SuggestionIndex {
 		BulkRequestBuilder bulkRequest = client.prepareBulk();
 		for (SuggestionField field : terms) {
 			bulkRequest.add(client.prepareIndex(index, TYPE).setSource(
-					generateFieldJS(field.input, field.output, field.payload)));
+					generateFieldJS(field.input, field.output, field.payload,
+							field.weight)));
 		}
 		BulkResponse bulkResponse = bulkRequest.setRefresh(true).execute()
 				.actionGet();
@@ -114,14 +102,15 @@ public class SuggestionIndex {
 	 * @throws IOException
 	 */
 	public void addSingleTerm(final List<String> inputs, final String output,
-			final String payload) throws IOException {
+			final String payload, final int weight) throws IOException {
 		client.prepareIndex(index, TYPE)
-				.setSource(generateFieldJS(inputs, output, payload))
+				.setSource(generateFieldJS(inputs, output, payload, weight))
 				.setRefresh(true).execute().actionGet();
 	}
 
 	private XContentBuilder generateFieldJS(final List<String> inputs,
-			final String output, final String payload) throws IOException {
+			final String output, final String payload, final int weight)
+			throws IOException {
 		XContentBuilder b = jsonBuilder().startObject()
 				.field(NAME_FIELD, output).startObject(SUGGEST_FIELD)
 				.startArray("input");
@@ -130,7 +119,7 @@ public class SuggestionIndex {
 			b.value(input);
 		}
 		b.endArray().field("output", output).field("payload", payload)
-				.field("weight", 1).endObject().endObject();
+				.field("weight", weight).endObject().endObject();
 		return b;
 	}
 
