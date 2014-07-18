@@ -4,6 +4,7 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -50,6 +51,16 @@ public class SuggestionIndex {
 				client = node.client();
 				// waitForGreen();
 			}
+		}
+		try {
+			createIndexIfNotExists(index);
+			addMapping(index, TYPE);
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -132,7 +143,7 @@ public class SuggestionIndex {
 	 * @return
 	 */
 	public List<String> findSuggestionsFor(String suggestRequest, int size) {
-
+		List<String> suggestions = new ArrayList<String>(size);
 		CompletionSuggestionBuilder compBuilder = new CompletionSuggestionBuilder(
 				SUGGEST_FIELD).field(SUGGEST_FIELD).text(suggestRequest);
 
@@ -151,12 +162,11 @@ public class SuggestionIndex {
 			List<CompletionSuggestion.Entry.Option> options = entry
 					.getOptions();
 			for (CompletionSuggestion.Entry.Option option : options) {
-				String toReturn = option.getText().toString();
-				System.out.println(toReturn);
+				suggestions.add(option.getText().toString());
 			}
 		}
 
-		return null;
+		return suggestions;
 	}
 
 	/**

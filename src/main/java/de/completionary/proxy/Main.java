@@ -1,6 +1,7 @@
 package de.completionary.proxy;
 
 import java.io.IOException;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 
 import org.elasticsearch.ElasticsearchException;
@@ -13,21 +14,28 @@ public class Main {
 
 	public static void main(String[] args) {
 		SuggestionIndex client = new SuggestionIndex("index");
-		
-		try {
-			client.test();
-		} catch (ElasticsearchException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+		Random r = new Random();
+
+		int numberOfQueries = 1000;
+		for (int i = 0; i < numberOfQueries; i++) { // heat up cpu
+			String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
 		}
+
+		long startTime = System.currentTimeMillis();
+		for (int i = 0; i < numberOfQueries; i++) {
+			String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
+		}
+		long randomTime = (System.currentTimeMillis() - startTime);
+
+		startTime = System.currentTimeMillis();
+		for (int i = 0; i < numberOfQueries; i++) {
+			String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
+			client.findSuggestionsFor(query, 15);
+		}
+		float time = (System.currentTimeMillis() - startTime - randomTime)
+				/ (float) numberOfQueries;
+
+		System.out.println(time + " ms per query");
 	}
 }
