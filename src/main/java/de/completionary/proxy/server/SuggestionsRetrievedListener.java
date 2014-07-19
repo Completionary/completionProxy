@@ -9,12 +9,17 @@ import org.zeromq.ZMQ;
 import net.minidev.json.JSONObject;
 import de.completionary.proxy.structs.Suggestion;
 
-public class SuggestionsRetrievedListener {
+public class SuggestionsRetrievedListener implements ASuggestionsRetrievedListener {
 
     final byte[] clientID;
 
     private static ZMQ.Socket[] sockets = new ZMQ.Socket[1];
 
+    public SuggestionsRetrievedListener(
+            final byte[] clientID) {
+        this.clientID = clientID;
+    }
+    
     /**
      * Returns a thread scoped socket to be used to send the response.
      * At the moment an array of sockets is stored and the sockets are stored in
@@ -24,7 +29,6 @@ public class SuggestionsRetrievedListener {
      * 
      * @return A thread scoped response socket
      */
-
     @Bean
     @Scope("thread")
     public ZMQ.Socket responseSocket() {
@@ -53,11 +57,6 @@ public class SuggestionsRetrievedListener {
 
         System.out.println(threadId + "\t" + outSocket);
         return outSocket;
-    }
-
-    SuggestionsRetrievedListener(
-            final byte[] clientID) {
-        this.clientID = clientID;
     }
 
     public void suggestionsRetrieved(final List<Suggestion> suggestions) {

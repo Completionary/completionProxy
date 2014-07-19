@@ -27,7 +27,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
-import de.completionary.proxy.server.SuggestionsRetrievedListener;
+import de.completionary.proxy.server.ASuggestionsRetrievedListener;
 import de.completionary.proxy.structs.Suggestion;
 import de.completionary.proxy.structs.SuggestionField;
 
@@ -180,9 +180,7 @@ public class SuggestionIndex {
     public void findSuggestionsFor(
             final String suggestRequest,
             final int size,
-            final SuggestionsRetrievedListener listener) {
-        
-        System.out.println("Index thread "+ Thread.currentThread().getId());
+            final ASuggestionsRetrievedListener listener) {
 
         CompletionSuggestionBuilder compBuilder =
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
@@ -213,12 +211,10 @@ public class SuggestionIndex {
                     }
                 }
                 listener.suggestionsRetrieved(suggestions);
-
             }
 
             public void onFailure(Throwable e) {
-                // TODO Auto-generated method stub
-
+                // TODO To be implemented
             }
         });
     }
