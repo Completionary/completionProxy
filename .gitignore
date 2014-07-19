@@ -1,5 +1,7 @@
-import/
 data/
+# Let's ignore the auto-generated thrift classes for now
+src/main/java/de/completionary/proxy/thrift/
+
 # Maven output directory
 target/
 # Eclipse files
