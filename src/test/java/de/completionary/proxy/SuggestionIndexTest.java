@@ -3,6 +3,7 @@
  */
 package de.completionary.proxy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,33 +37,37 @@ public class SuggestionIndexTest {
         }
         final long randomTime = (System.currentTimeMillis() - randomStartTime);
 
-        final AtomicInteger numberOfWaitingRequests =
-                new AtomicInteger(numberOfQueries);
-        final long startTime = System.currentTimeMillis();
+        final float times[] = new float[numberOfQueries];
+        final long totalTimeStart = System.currentTimeMillis();
         for (int i = 0; i < numberOfQueries; i++) {
+            final int queryID = i;
             String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
+            final long startTime = System.currentTimeMillis();
             client.findSuggestionsFor(query, 15,
                     new ASuggestionsRetrievedListener() {
 
                         public void suggestionsRetrieved(
                                 List<Suggestion> suggestions) {
-                            if (numberOfWaitingRequests.decrementAndGet() == 0) {
-                                float time =
-                                        (System.currentTimeMillis() - startTime - randomTime)
-                                                / (float) numberOfQueries;
-
-                                System.out.println(time + " ms per query");
-                            }
+                            float time =
+                                    (System.currentTimeMillis() - startTime);
+                            times[queryID] = time;
                         }
                     });
         }
-        while (numberOfWaitingRequests.get() != 0) {
+
+        while (times[numberOfQueries - 1] == 0.0) {
             try {
-                Thread.sleep(100);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-
+        float time =
+                (System.currentTimeMillis() - totalTimeStart - randomTime)
+                        * 1000 / (float) numberOfQueries;
+        System.out.println("Average per query time: " + time + " µs");
+        for (float f : times) {
+            System.out.println(f);
+        }
     }
 }
