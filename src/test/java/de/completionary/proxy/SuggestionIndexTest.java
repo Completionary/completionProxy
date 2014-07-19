@@ -33,31 +33,31 @@ public class SuggestionIndexTest {
 
     @Test
     public void test() {
-        SuggestionIndex client = new SuggestionIndex("index");
-
-        Random r = new Random();
-
-        int numberOfQueries = 1000;
-        for (int i = 0; i < 1000; i++) { // heat up cpu
-            r.nextInt();
-        }
-
-        long startTime = System.currentTimeMillis();
-        for (int i = 0; i < numberOfQueries; i++) {
-            String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
-        }
-        long randomTime = (System.currentTimeMillis() - startTime);
-
-        startTime = System.currentTimeMillis();
-        for (int i = 0; i < numberOfQueries; i++) {
-            String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
-            client.findSuggestionsFor(query, 15);
-        }
-        float time =
-                (System.currentTimeMillis() - startTime - randomTime)
-                        / (float) numberOfQueries;
-
-        System.out.println(time + " ms per query");
+//        SuggestionIndex client = new SuggestionIndex("index");
+//
+//        Random r = new Random();
+//
+//        int numberOfQueries = 1000;
+//        for (int i = 0; i < 1000; i++) { // heat up cpu
+//            r.nextInt();
+//        }
+//
+//        long startTime = System.currentTimeMillis();
+//        for (int i = 0; i < numberOfQueries; i++) {
+//            String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
+//        }
+//        long randomTime = (System.currentTimeMillis() - startTime);
+//
+//        startTime = System.currentTimeMillis();
+//        for (int i = 0; i < numberOfQueries; i++) {
+//            String query = "" + (char) ('a' + Math.abs(r.nextInt()) % 25);
+//            client.findSuggestionsFor(query, 15);
+//        }
+//        float time =
+//                (System.currentTimeMillis() - startTime - randomTime)
+//                        / (float) numberOfQueries;
+//
+//        System.out.println(time + " ms per query");
     }
 
 }

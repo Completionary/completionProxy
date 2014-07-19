@@ -27,8 +27,6 @@ public class Suggestion implements JSONStreamAware {
         out.append('[').append('"');
         out.append(suggestion, 0, suggestion.length());
         out.append('"').append(',').append('"');
-        //		String p="{\"img\":\""+payload+"\", \"href\":\"www.metalcon.de\"}";
-        //		out.append(p, 0, p.length());
         out.append(payload, 0, payload.length());
         out.append('"').append(']');
     }

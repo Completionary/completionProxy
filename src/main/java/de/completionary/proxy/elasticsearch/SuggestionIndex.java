@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
@@ -25,6 +27,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
+import de.completionary.proxy.server.SuggestionsRetrievedListener;
 import de.completionary.proxy.structs.Suggestion;
 import de.completionary.proxy.structs.SuggestionField;
 
@@ -117,8 +120,6 @@ public class SuggestionIndex {
             for (BulkItemResponse item : bulkResponse.getItems()) {
                 System.err.println(item.getFailureMessage());
             }
-        } else {
-            findSuggestionsFor("n", 5);
         }
     }
 
@@ -176,10 +177,13 @@ public class SuggestionIndex {
      *            Maximum number of suggestion strings
      * @return
      */
-    public List<Suggestion> findSuggestionsFor(
+    public void findSuggestionsFor(
             final String suggestRequest,
-            final int size) {
-        List<Suggestion> suggestions = new ArrayList<Suggestion>(size);
+            final int size,
+            final SuggestionsRetrievedListener listener) {
+        
+        System.out.println("Index thread "+ Thread.currentThread().getId());
+
         CompletionSuggestionBuilder compBuilder =
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
                         SUGGEST_FIELD).text(suggestRequest);
@@ -187,24 +191,36 @@ public class SuggestionIndex {
         SuggestRequestBuilder suggestRequestBuilder =
                 client.prepareSuggest(index).addSuggestion(compBuilder);
 
-        SuggestResponse suggestResponse =
-                suggestRequestBuilder.execute().actionGet();
-        CompletionSuggestion compSuggestion =
-                suggestResponse.getSuggest().getSuggestion(SUGGEST_FIELD);
+        ListenableActionFuture<SuggestResponse> future =
+                suggestRequestBuilder.execute();
 
-        List<CompletionSuggestion.Entry> entryList =
-                compSuggestion.getEntries();
-        if (entryList != null) {
-            CompletionSuggestion.Entry entry = entryList.get(0);
-            List<CompletionSuggestion.Entry.Option> options =
-                    entry.getOptions();
-            for (CompletionSuggestion.Entry.Option option : options) {
-                suggestions.add(new Suggestion(option.getText().toString(),
-                        option.getPayloadAsString()));
+        future.addListener(new ActionListener<SuggestResponse>() {
+
+            public void onResponse(SuggestResponse response) {
+                List<Suggestion> suggestions = new ArrayList<Suggestion>(size);
+                CompletionSuggestion compSuggestion =
+                        response.getSuggest().getSuggestion(SUGGEST_FIELD);
+
+                List<CompletionSuggestion.Entry> entryList =
+                        compSuggestion.getEntries();
+                if (entryList != null) {
+                    CompletionSuggestion.Entry entry = entryList.get(0);
+                    List<CompletionSuggestion.Entry.Option> options =
+                            entry.getOptions();
+                    for (CompletionSuggestion.Entry.Option option : options) {
+                        suggestions.add(new Suggestion(option.getText()
+                                .toString(), option.getPayloadAsString()));
+                    }
+                }
+                listener.suggestionsRetrieved(suggestions);
+
             }
-        }
 
-        return suggestions;
+            public void onFailure(Throwable e) {
+                // TODO Auto-generated method stub
+
+            }
+        });
     }
 
     /**
