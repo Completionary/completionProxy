@@ -11,6 +11,7 @@ typedef i32 int
  */
 struct Suggestion {
 	1: string suggestion;
+	//will be a JSON and we have to specify supported base format
 	2: string payload;
 }
 
@@ -24,6 +25,7 @@ struct Suggestion {
 struct SuggestionField {
 	1: string output;
 	2: list<string> input;
+	//will be a JSON and we have to specify supported base format
 	3: string payload;
 	4: int weight;
 }
@@ -68,6 +70,28 @@ service AnalyticsService {
 	// I want a function to display how much traffic has been used
 	
 	// I want a function that displays the current payment plan
-	
-	
+}
+
+/**
+* basic service that enables user login 
+* 
+* 
+**/
+service AuthenticationService {
+// register account
+// delete account
+// login
+// forgotPassword
+}
+
+/**
+* 
+* 
+* 
+**/
+service PaymentService {
+// buySubscription(),
+// cancleSubscription(),
+// upgradeSubscription(),
+// warnUser(), // e.g. queries start increase over subscription limit (does this maybe have to be in a monitoring service?)
 }
