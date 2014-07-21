@@ -18,11 +18,11 @@ struct Suggestion {
  * Data used to store new terms in the DB
  * 
  * @param ID
- *            Used to reference this field for deletion queries.
- *            If <ID> is null <output> will be used instead
+ *            Used to reference this field for deletion queries. Must be
+ *            unique.
  * @param output
- *            In case this term matches a suggestion query, this string will
- *            be displayed
+ *            If not null, this string will be displayed returned in case
+ *            this term matches a suggestion query
  * @param input
  *            List of strings used for the completion index triggering this
  *            field
@@ -32,9 +32,8 @@ struct Suggestion {
  *            Weight of the term
  */
 struct SuggestionField {
-	// May be null if output is set
 	1: string ID;
-	// May be null if ID is set
+	// May be null
 	2: string output;
 	// Required
 	3: list<string> input;
@@ -57,26 +56,24 @@ service SuggestionService {
  * TODO: what happens if a customer wants to have multiple indexes for several autocompletions (this is not reflected by our API and would yield the need to create several accounts)
  **/
 service AdminService {
-    /**
-     * Adds a single term (SuggestionField) to the DB and refreshes the index.
-     * 
-     * @param ID
-     * 			  Used to reference this field for deletion queries.
-     *            If <ID> is null <output> will be used instead
-     * @param inputs
-     *            The strings used to build the suggestion index
-     * @param output
-     *            The String to be returned by a complete request if some of the
-     *            inputs are matching. If this element is NULL the matching
-     *            input string will be used instead. This string will also be
-     *            used to define the ID of the new field
-     * @param payload
-     *            The payload (e.g. images) stored with the field
-     * @param weight
-     *            The weight of the term
-     * 
-     * @throws IOException
-     */
+	/**
+	 * Adds a single term (SuggestionField) to the DB and refreshes the index.
+	 * 
+	 * @param ID
+	 * 			  Used to reference this field for deletion queries.
+	 * @param inputs
+	 *            The strings used to build the suggestion index
+	 * @param output
+	 *            The String to be returned by a complete request if some of the
+	 *            inputs are matching. If this element is NULL the matching
+	 *            input string will be used instead.
+	 * @param payload
+	 *            The payload (e.g. images) stored with the field
+	 * @param weight
+	 *            The weight of the term
+	 * 
+	 * @throws IOException
+	 */
 	void addSingleTerm( 1: string index,
 			2: list<string> inputs,
 			3: string output,
@@ -102,7 +99,7 @@ service AdminService {
 	 * Deletes a whole index
 	 */
 	bool deleteIndex(1: string index),
-	
+
 	/**
 	 * Clears an Index (deletes all fields)
 	 */

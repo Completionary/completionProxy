@@ -14,6 +14,7 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
+import org.elasticsearch.action.admin.indices.optimize.OptimizeRequest;
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
@@ -101,10 +102,10 @@ public class SuggestionIndex {
     public void addTerms(final List<SuggestionField> terms) throws IOException {
         BulkRequestBuilder bulkRequest = client.prepareBulk();
         for (SuggestionField field : terms) {
-            bulkRequest.add(client.prepareIndex(index, TYPE,
-                    field.ID == null ? field.output : field.ID).setSource(
-                    generateFieldJS(field.input, field.output, field.payload,
-                            field.weight)));
+            bulkRequest.add(client.prepareIndex(index, TYPE, field.ID)
+                    .setSource(
+                            generateFieldJS(field.input, field.output,
+                                    field.payload, field.weight)));
         }
         BulkResponse bulkResponse =
                 bulkRequest.setRefresh(true).execute().actionGet();
@@ -119,8 +120,11 @@ public class SuggestionIndex {
     /**
      * Adds a single term (SuggestionField) to the DB and refreshes the index.
      * 
-     * @param inputs
-     *            The strings used to build the suggestion index
+     * @param ID
+     *            Used to reference this field for deletion queries. Must be
+     *            unique.
+     * @param input
+     *            The strings used to build the suggestion index.
      * @param output
      *            The String to be returned by a complete request if some of the
      *            inputs are matching. If this element is NULL the matching
@@ -139,7 +143,7 @@ public class SuggestionIndex {
             final String output,
             final String payload,
             final int weight) throws IOException {
-        client.prepareIndex(index, TYPE, ID == null ? output : ID)
+        client.prepareIndex(index, TYPE, ID)
                 .setSource(generateFieldJS(inputs, output, payload, weight))
                 .setRefresh(true).execute().actionGet();
     }
@@ -153,10 +157,12 @@ public class SuggestionIndex {
      * @throws IOException
      */
     public boolean deleteSingleTerm(final String ID) throws IOException {
-        System.out.println("Deleting " + ID);
+
         DeleteResponse response =
                 client.prepareDelete(index, TYPE, ID).setRefresh(true)
                         .execute().actionGet();
+        System.out.println("Deleting " + ID + ": " + response.isFound());
+        expungeDeletes();
         return response.isFound();
     }
 
@@ -240,18 +246,9 @@ public class SuggestionIndex {
                     /*
                      * Loop through all suggestions
                      */
-                    boolean first = true;
                     for (CompletionSuggestion.Entry.Option option : options) {
                         suggestionStrings.add(new Suggestion(option.getText()
                                 .toString(), option.getPayloadAsString()));
-                        if (first) {
-                            try {
-                                deleteSingleTerm(option.getText().toString());
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                            first = false;
-                        }
                     }
                 }
                 listener.suggestionsRetrieved(suggestionStrings);
@@ -349,18 +346,26 @@ public class SuggestionIndex {
      */
     public void truncate() throws InterruptedException, ExecutionException,
             IOException {
-        delete();
-        waitForGreen();
-        createIndexIfNotExists();
+        client.admin().indices().prepareDeleteMapping(index).setType(TYPE)
+                .execute().actionGet();
+        waitForYellow();
         addMapping(TYPE);
     }
 
-    private void waitForYellow() {
+    public void waitForYellow() {
         client.admin().cluster().prepareHealth().setIndices(index);
     }
 
-    private void waitForGreen() {
-        client.admin().cluster().prepareHealth().setIndices(index)
-                .setWaitForGreenStatus().execute().actionGet();
+    public void waitForGreen() {
+        //        client.admin().cluster().prepareHealth().setIndices(index)
+        //                .setWaitForGreenStatus().execute().actionGet();
+        client.admin().indices().optimize(new OptimizeRequest(index))
+                .actionGet();
+    }
+
+    private void expungeDeletes() {
+        client.admin().indices().prepareOptimize(index)
+                .setOnlyExpungeDeletes(true).setWaitForMerge(true).execute()
+                .actionGet();
     }
 }

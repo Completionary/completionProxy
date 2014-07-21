@@ -2,7 +2,7 @@ package de.completionary.proxy;
 
 import de.completionary.proxy.server.CompletionServer;
 
-public class Main {
+public class CompletionProxy {
 
     static boolean running = true;
 

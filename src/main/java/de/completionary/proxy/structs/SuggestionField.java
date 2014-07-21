@@ -19,12 +19,13 @@ public class SuggestionField {
      * All Strings (output, payload and all input strings) must be escaped:
      * JSONObject.escape()
      * 
+     * 
      * @param ID
-     *            Used to reference this field for deletion queries.
-     *            If <ID> is null <output> will be used instead
+     *            Used to reference this field for deletion queries. Must be
+     *            unique.
      * @param output
-     *            In case this term matches a suggestion query, this string will
-     *            be displayed
+     *            If not null, this string will be displayed returned in case
+     *            this term matches a suggestion query
      * @param input
      *            List of strings used for the completion index triggering this
      *            field
