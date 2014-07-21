@@ -38,8 +38,6 @@ public class SuggestionIndex {
      */
     private final String index;
 
-    final static Object nodeMutex = new Object();
-
     private static Node node = null;
 
     private static Client client = null;
@@ -59,25 +57,17 @@ public class SuggestionIndex {
                 node.close();
             }
         });
+
+        boolean isClient = true;
+        node =
+                nodeBuilder().clusterName("completionaryCluster")
+                        .client(isClient).node();
+        client = node.client();
     }
 
     public SuggestionIndex(
             String indexID) {
         this.index = indexID;
-
-        /*
-         * Connect with the server if not already done
-         */
-        synchronized (nodeMutex) {
-            if (client == null) {
-                boolean isClient = true;
-                node =
-                        nodeBuilder().clusterName("completionaryCluster")
-                                .client(isClient).node();
-                client = node.client();
-                // waitForGreen();
-            }
-        }
 
         /*
          * Create the ES index if it does not exist yet
