@@ -17,6 +17,7 @@ import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsReques
 import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
@@ -78,8 +79,8 @@ public class SuggestionIndex {
                             .exists(new IndicesExistsRequest(index))
                             .actionGet().isExists();
             if (!indexExists) {
-                createIndexIfNotExists(index);
-                addMapping(index, TYPE);
+                createIndexIfNotExists();
+                addMapping(TYPE);
             }
         } catch (ExecutionException e) {
             e.printStackTrace();
@@ -93,13 +94,15 @@ public class SuggestionIndex {
     /**
      * Adds a list of SuggestionFields (terms) to the DB within one single bulk
      * request and refreshes the index afterwards.
+     * If the ID of a term is null, the output string will be used.
      * 
      * @throws IOException
      */
     public void addTerms(final List<SuggestionField> terms) throws IOException {
         BulkRequestBuilder bulkRequest = client.prepareBulk();
         for (SuggestionField field : terms) {
-            bulkRequest.add(client.prepareIndex(index, TYPE).setSource(
+            bulkRequest.add(client.prepareIndex(index, TYPE,
+                    field.ID == null ? field.output : field.ID).setSource(
                     generateFieldJS(field.input, field.output, field.payload,
                             field.weight)));
         }
@@ -116,29 +119,51 @@ public class SuggestionIndex {
     /**
      * Adds a single term (SuggestionField) to the DB and refreshes the index.
      * 
+     * @param inputs
+     *            The strings used to build the suggestion index
+     * @param output
+     *            The String to be returned by a complete request if some of the
+     *            inputs are matching. If this element is NULL the matching
+     *            input string will be used instead. This string will also be
+     *            used to define the ID of the new field
+     * @param payload
+     *            The payload (e.g. images) stored with the field
+     * @param weight
+     *            The weight of the term
+     * 
      * @throws IOException
      */
     public void addSingleTerm(
+            final String ID,
             final List<String> inputs,
             final String output,
             final String payload,
             final int weight) throws IOException {
-        client.prepareIndex(index, TYPE)
+        client.prepareIndex(index, TYPE, ID == null ? output : ID)
                 .setSource(generateFieldJS(inputs, output, payload, weight))
                 .setRefresh(true).execute().actionGet();
     }
 
     /**
+     * Deletes a single term (SuggestionField) and refreshes the index.
+     * 
+     * @param ID
+     *            ID of the field to be deleted
+     * @return <true> in case the element has been found and deleted
+     * @throws IOException
+     */
+    public boolean deleteSingleTerm(final String ID) throws IOException {
+        System.out.println("Deleting " + ID);
+        DeleteResponse response =
+                client.prepareDelete(index, TYPE, ID).setRefresh(true)
+                        .execute().actionGet();
+        return response.isFound();
+    }
+
+    /**
      * Creates a jason node for a suggestion field
      * 
-     * @param inputs
-     *            The strings used to build the suggestion index
-     * @param output
-     *            The String to be completed if some of the inputs are triggered
-     * @param payload
-     *            The payload (e.g. images) stored with the field
-     * @param weight
-     *            The weight of the term
+     * @see SuggestionIndex.addSingleTerm
      * @return A new XContentBuilder with the field created
      * @throws IOException
      */
@@ -147,15 +172,26 @@ public class SuggestionIndex {
             final String output,
             final String payload,
             final int weight) throws IOException {
+        String name = output;
+        if (name == null) {
+            if (inputs.size() == 0) {
+                return null;
+            }
+            name = inputs.get(0);
+        }
         XContentBuilder b =
-                jsonBuilder().startObject().field(NAME_FIELD, output)
+                jsonBuilder().startObject().field(NAME_FIELD, name)
                         .startObject(SUGGEST_FIELD).startArray("input");
 
         for (String input : inputs) {
             b.value(input);
         }
-        b.endArray().field("output", output).field("payload", payload)
-                .field("weight", weight).endObject().endObject();
+        b.endArray();
+        if (output != null) {
+            b.field("output", output);
+        }
+        b.field("payload", payload).field("weight", weight).endObject()
+                .endObject();
         return b;
     }
 
@@ -182,25 +218,43 @@ public class SuggestionIndex {
         ListenableActionFuture<SuggestResponse> future =
                 suggestRequestBuilder.execute();
 
+        /*
+         * Trigger listener.suggestionsRetrieved as soon as we've received the
+         * answer from ES
+         */
         future.addListener(new ActionListener<SuggestResponse>() {
 
             public void onResponse(SuggestResponse response) {
-                List<Suggestion> suggestions = new ArrayList<Suggestion>(size);
+                List<Suggestion> suggestionStrings =
+                        new ArrayList<Suggestion>(size);
                 CompletionSuggestion compSuggestion =
                         response.getSuggest().getSuggestion(SUGGEST_FIELD);
 
                 List<CompletionSuggestion.Entry> entryList =
                         compSuggestion.getEntries();
                 if (entryList != null) {
+                    // We request only 1 completion -> get(0)
                     CompletionSuggestion.Entry entry = entryList.get(0);
                     List<CompletionSuggestion.Entry.Option> options =
                             entry.getOptions();
+                    /*
+                     * Loop through all suggestions
+                     */
+                    boolean first = true;
                     for (CompletionSuggestion.Entry.Option option : options) {
-                        suggestions.add(new Suggestion(option.getText()
+                        suggestionStrings.add(new Suggestion(option.getText()
                                 .toString(), option.getPayloadAsString()));
+                        if (first) {
+                            try {
+                                deleteSingleTerm(option.getText().toString());
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                            first = false;
+                        }
                     }
                 }
-                listener.suggestionsRetrieved(suggestions);
+                listener.suggestionsRetrieved(suggestionStrings);
             }
 
             public void onFailure(Throwable e) {
@@ -221,7 +275,7 @@ public class SuggestionIndex {
      *            The type of the mapping
      * @throws IOException
      */
-    public static void addMapping(String index, String type) throws IOException {
+    public void addMapping(String type) throws IOException {
         XContentBuilder js =
                 jsonBuilder().startObject().startObject(type)
                         .startObject("properties").startObject("name")
@@ -244,8 +298,8 @@ public class SuggestionIndex {
      * @throws ExecutionException
      * @throws InterruptedException
      */
-    private void createIndexIfNotExists(String index)
-            throws ExecutionException, InterruptedException {
+    private void createIndexIfNotExists() throws ExecutionException,
+            InterruptedException {
         try {
             CreateIndexResponse response =
                     client.admin().indices()
@@ -263,19 +317,17 @@ public class SuggestionIndex {
     }
 
     /**
-     * Deletes an ES index
+     * Deletes the whole ES index
      * 
      * @param index
      *            The index to be deleted
      * @throws InterruptedException
      * @throws ExecutionException
      */
-    private void deleteIndex(String index) throws InterruptedException,
-            ExecutionException {
+    public void delete() throws InterruptedException, ExecutionException {
 
         final DeleteIndexRequest deleteIndexRequest =
                 new DeleteIndexRequest(index);
-
         try {
             client.admin().indices().delete(deleteIndexRequest).get();
         } catch (ExecutionException e) {
@@ -284,6 +336,23 @@ public class SuggestionIndex {
                 throw e;
             }
         }
+    }
+
+    /**
+     * Empties the index (all fields are deleted)
+     * 
+     * @param index
+     *            The index to be deleted
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws IOException
+     */
+    public void truncate() throws InterruptedException, ExecutionException,
+            IOException {
+        delete();
+        waitForGreen();
+        createIndexIfNotExists();
+        addMapping(TYPE);
     }
 
     private void waitForYellow() {

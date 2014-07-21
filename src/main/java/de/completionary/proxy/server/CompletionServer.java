@@ -1,17 +1,8 @@
 package de.completionary.proxy.server;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.math.BigInteger;
-import java.util.List;
-
-import net.minidev.json.JSONObject;
-import net.minidev.json.JSONStyle;
-
 import org.zeromq.ZMQ;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
-import de.completionary.proxy.structs.Suggestion;
 
 public class CompletionServer {
 
@@ -19,7 +10,7 @@ public class CompletionServer {
 
     static boolean running = true;
 
-    SuggestionIndex client = new SuggestionIndex("index");
+    SuggestionIndex index = new SuggestionIndex("index");
 
     ZMQ.Socket inSocket = context.socket(ZMQ.PULL);
 
@@ -43,7 +34,7 @@ public class CompletionServer {
             System.out.println("Received " + msg);
 
             if (msg.equals("message")) {
-                client.findSuggestionsFor(data, 15,
+                index.findSuggestionsFor(data, 15,
                         new SuggestionsRetrievedListener(idBuffer));
             }
         }

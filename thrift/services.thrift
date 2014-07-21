@@ -3,7 +3,6 @@ namespace java de.completionary.proxy.thrift
 typedef i16 short
 typedef i32 int
 
-
 /*
  * Data sent back from the suggestion service
  * @param suggestion The suggested string (equals 'output' of SuggestionField)
@@ -17,66 +16,120 @@ struct Suggestion {
 
 /**
  * Data used to store new terms in the DB
- * @param output In case this term matches a suggestion query, this string will be displayed
- * @param input List of strings used for the completion index triggering this field
- * @param payload Additional data stored with this term
- * @param weight Weight of the term
+ * 
+ * @param ID
+ *            Used to reference this field for deletion queries.
+ *            If <ID> is null <output> will be used instead
+ * @param output
+ *            In case this term matches a suggestion query, this string will
+ *            be displayed
+ * @param input
+ *            List of strings used for the completion index triggering this
+ *            field
+ * @param payload
+ *            Additional data stored with this term
+ * @param weight
+ *            Weight of the term
  */
 struct SuggestionField {
-	1: string output;
-	2: list<string> input;
+	// May be null if output is set
+	1: string ID;
+	// May be null if ID is set
+	2: string output;
+	// Required
+	3: list<string> input;
 	//will be a JSON and we have to specify supported base format
-	3: string payload;
-	4: int weight;
+	4: string payload;
+	// required
+	5: int weight;
 }
-
 
 service SuggestionService {
-        list<Suggestion> findSuggestionsFor(1: string query, 2: short size),
+	/**
+	 * Returns the top k completions of <query>
+	 */
+	list<Suggestion> findSuggestionsFor(1: string index, 2: string query, 3: short k),
 }
 
 /**
-* Interface for Users of the API to administrate the service
-* 
-* TODO: what happens if a customer wants to have multiple indexes for several autocompletions (this is not reflected by our API and would yield the need to create several accounts)
-**/
+ * Interface for Users of the API to administrate the service
+ * 
+ * TODO: what happens if a customer wants to have multiple indexes for several autocompletions (this is not reflected by our API and would yield the need to create several accounts)
+ **/
 service AdminService {
-	//adds a single term to the suggest Index
-   	void addSingleTerm(	1: list<string> inputs,
-	 			2: string output,
-            			3: string payload,
-				4: int weight),
+    /**
+     * Adds a single term (SuggestionField) to the DB and refreshes the index.
+     * 
+     * @param ID
+     * 			  Used to reference this field for deletion queries.
+     *            If <ID> is null <output> will be used instead
+     * @param inputs
+     *            The strings used to build the suggestion index
+     * @param output
+     *            The String to be returned by a complete request if some of the
+     *            inputs are matching. If this element is NULL the matching
+     *            input string will be used instead. This string will also be
+     *            used to define the ID of the new field
+     * @param payload
+     *            The payload (e.g. images) stored with the field
+     * @param weight
+     *            The weight of the term
+     * 
+     * @throws IOException
+     */
+	void addSingleTerm( 1: string index,
+			2: list<string> inputs,
+			3: string output,
+			4: string payload,
+			5: int weight),
 
-	void addSingleTerm(1: term SuggestionField),
+	/**
+	 * Adds a single term to the suggest Index (see above).
+	 */
+	void addSingleTerm(1: string index, 2: term SuggestionField),
 
-	void addTerms (1: list<SuggestionField> terms),
+	/**
+	 * Adds a list of terms in one single transaction (see above)
+	 */
+	void addTerms (1: string index, 2: list<SuggestionField> terms),
+
+	/**
+	 * Removes a term from the Database
+	 */
+	bool deleteTerm(1: string index, 2: term ID),
+
+	/**
+	 * Deletes a whole index
+	 */
+	bool deleteIndex(1: string index),
 	
-	void deleteTerm(1: term SuggestionField),
-	
-	void deleteIndex(),	
+	/**
+	 * Clears an Index (deletes all fields)
+	 */
+	bool truncateIndex(1: string index),
 }
 /**
-* Serice to retrieve analytics for API customer
-* 
-* 
-* 
-**/
+ * Serice to retrieve analytics for API customer
+ * 
+ * 
+ * 
+ **/
 service AnalyticsService {
 	// retrieves a list of top asked queries (which have been selected from users) the weight in the SuggestioField will be the amount of selections
 	list<SuggestionField> topQueriesSince(1: Date, 2: short k),
-	
+
 	// I want a function that enables to display the currently asked queries. This should be a polling http request
-	
+
 	// I want a function to display how much traffic has been used
-	
+
 	// I want a function that displays the current payment plan
 }
 
 /**
-* basic service that enables user login 
-* 
-* 
-**/
+ * basic service that enables user login 
+ * 
+ * 
+ **/
 service AuthenticationService {
 // register account
 // delete account
@@ -85,10 +138,10 @@ service AuthenticationService {
 }
 
 /**
-* 
-* 
-* 
-**/
+ * 
+ * 
+ * 
+ **/
 service PaymentService {
 // buySubscription(),
 // cancleSubscription(),
