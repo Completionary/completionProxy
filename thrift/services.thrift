@@ -42,9 +42,9 @@ service SuggestionService {
 **/
 service AdminService {
 	//adds a single term to the suggest Index
-    void addSingleTerm(	1: list<string> inputs,
-		 		2: string output,
-            	3: string payload,
+   	void addSingleTerm(	1: list<string> inputs,
+	 			2: string output,
+            			3: string payload,
 				4: int weight),
 
 	void addSingleTerm(1: term SuggestionField),
