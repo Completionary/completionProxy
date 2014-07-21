@@ -33,11 +33,41 @@ service SuggestionService {
         list<Suggestion> findSuggestionsFor(1: string query, 2: short size),
 }
 
+/**
+* Interface for Users of the API to administrate the service
+* 
+* TODO: what happens if a customer wants to have multiple indexes for several autocompletions (this is not reflected by our API and would yield the need to create several accounts)
+**/
 service AdminService {
-        void addSingleTerm(	1: list<string> inputs,
+	//adds a single term to the suggest Index
+    void addSingleTerm(	1: list<string> inputs,
 		 		2: string output,
-            			3: string payload,
+            	3: string payload,
 				4: int weight),
 
+	void addSingleTerm(1: term SuggestionField),
+
 	void addTerms (1: list<SuggestionField> terms),
+	
+	void deleteTerm(1: term SuggestionField),
+	
+	void deleteIndex(),	
+}
+/**
+* Serice to retrieve analytics for API customer
+* 
+* 
+* 
+**/
+service AnalyticsService {
+	// retrieves a list of top asked queries (which have been selected from users) the weight in the SuggestioField will be the amount of selections
+	list<SuggestionField> topQueriesSince(1: Date, 2: short k),
+	
+	// I want a function that enables to display the currently asked queries. This should be a polling http request
+	
+	// I want a function to display how much traffic has been used
+	
+	// I want a function that displays the current payment plan
+	
+	
 }
