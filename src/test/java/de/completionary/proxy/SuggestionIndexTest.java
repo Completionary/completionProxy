@@ -77,7 +77,7 @@ public class SuggestionIndexTest {
     @Test
     public void Test() throws InterruptedException, ExecutionException,
             IOException {
-        SuggestionIndex client = new SuggestionIndex("index");
+        SuggestionIndex client = SuggestionIndex.getIndex("index");
         client.truncate();
 
         client.addSingleTerm("1", Arrays.asList(new String[] {

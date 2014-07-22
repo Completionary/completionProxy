@@ -1,4 +1,4 @@
-namespace java de.completionary.proxy.thrift
+namespace java de.completionary.proxy.thrift.services
 
 typedef i16 short
 typedef i32 int

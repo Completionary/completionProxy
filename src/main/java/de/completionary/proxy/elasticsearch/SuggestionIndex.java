@@ -5,7 +5,10 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
 import org.elasticsearch.action.ActionListener;
@@ -50,6 +53,9 @@ public class SuggestionIndex {
 
     private static final String TYPE = "t";
 
+    private static Map<String, SuggestionIndex> indices =
+            new TreeMap<String, SuggestionIndex>();
+
     static {
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
@@ -67,7 +73,22 @@ public class SuggestionIndex {
         client = node.client();
     }
 
-    public SuggestionIndex(
+    /**
+     * Factory methode to create SuggestionIndex objects
+     * 
+     * @param index
+     * @return
+     */
+    public static SuggestionIndex getIndex(final String index) {
+        SuggestionIndex instance = indices.get(index);
+        if (instance == null) {
+            instance = new SuggestionIndex(index);
+            indices.put(index, instance);
+        }
+        return instance;
+    }
+
+    private SuggestionIndex(
             String indexID) {
         this.index = indexID;
 
@@ -271,7 +292,7 @@ public class SuggestionIndex {
      *            The type of the mapping
      * @throws IOException
      */
-    public void addMapping(String type) throws IOException {
+    private void addMapping(String type) throws IOException {
         XContentBuilder js =
                 jsonBuilder().startObject().startObject(type)
                         .startObject("properties").startObject("name")
