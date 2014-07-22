@@ -44,7 +44,7 @@ public class SuggestionServiceTest {
             } catch (TTransportException e) {
                 e.printStackTrace();
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e1) {
                 }
             }
@@ -61,6 +61,7 @@ public class SuggestionServiceTest {
         final String indexID = "index";
         final String term = "asdf";
         final String query = "as";
+        final String payload = "{}";
 
         SuggestionIndex index = SuggestionIndex.getIndex(indexID);
         try {
@@ -78,18 +79,16 @@ public class SuggestionServiceTest {
              */
             index.addSingleTerm("1", Arrays.asList(new String[] {
                 term
-            }), null, "{}", 1);
+            }), null, payload, 1);
             suggestions = client.findSuggestionsFor(indexID, query, (short) 10);
             Assert.assertEquals(suggestions.size(), 1);
-            Assert.assertEquals(suggestions.get(1), term);
+            Assert.assertEquals(suggestions.get(0).suggestion, term);
+            Assert.assertEquals(suggestions.get(0).payload, payload);
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (ExecutionException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 

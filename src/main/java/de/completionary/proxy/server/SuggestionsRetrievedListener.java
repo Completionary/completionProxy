@@ -6,10 +6,10 @@ import net.minidev.json.JSONObject;
 
 import org.zeromq.ZMQ;
 
-import de.completionary.proxy.structs.Suggestion;
+import de.completionary.proxy.thrift.services.Suggestion;
 
 public class SuggestionsRetrievedListener implements
-        ASuggestionsRetrievedListener {
+        ISuggestionsRetrievedListener {
 
     final byte[] clientID;
 

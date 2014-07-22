@@ -14,7 +14,7 @@ import junit.framework.Assert;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
-import de.completionary.proxy.server.ASuggestionsRetrievedListener;
+import de.completionary.proxy.server.ISuggestionsRetrievedListener;
 import de.completionary.proxy.structs.Suggestion;
 
 /**
@@ -84,7 +84,7 @@ public class SuggestionIndexTest {
             "bla", "blub"
         }), "asdf", "{}", 1);
         final List<Suggestion> results = new ArrayList<Suggestion>();
-        client.findSuggestionsFor("b", 10, new ASuggestionsRetrievedListener() {
+        client.findSuggestionsFor("b", 10, new ISuggestionsRetrievedListener() {
 
             public void suggestionsRetrieved(List<Suggestion> suggestions) {
                 results.addAll(suggestions);
@@ -104,7 +104,7 @@ public class SuggestionIndexTest {
          */
         Assert.assertTrue(client.deleteSingleTerm("1"));
         results.clear();
-        client.findSuggestionsFor("b", 10, new ASuggestionsRetrievedListener() {
+        client.findSuggestionsFor("b", 10, new ISuggestionsRetrievedListener() {
 
             public void suggestionsRetrieved(List<Suggestion> suggestions) {
                 results.addAll(suggestions);

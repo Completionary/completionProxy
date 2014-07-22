@@ -10,7 +10,7 @@ public class CompletionServer {
 
     static boolean running = true;
 
-    SuggestionIndex index = new SuggestionIndex("index");
+    SuggestionIndex index = SuggestionIndex.getIndex("index");
 
     ZMQ.Socket inSocket = context.socket(ZMQ.PULL);
 

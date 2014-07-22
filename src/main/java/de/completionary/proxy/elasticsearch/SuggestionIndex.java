@@ -5,7 +5,6 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -32,9 +31,9 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
-import de.completionary.proxy.server.ASuggestionsRetrievedListener;
-import de.completionary.proxy.structs.Suggestion;
+import de.completionary.proxy.server.ISuggestionsRetrievedListener;
 import de.completionary.proxy.structs.SuggestionField;
+import de.completionary.proxy.thrift.services.Suggestion;
 
 public class SuggestionIndex {
 
@@ -232,7 +231,7 @@ public class SuggestionIndex {
     public void findSuggestionsFor(
             final String suggestRequest,
             final int size,
-            final ASuggestionsRetrievedListener listener) {
+            final ISuggestionsRetrievedListener listener) {
 
         CompletionSuggestionBuilder compBuilder =
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
@@ -256,19 +255,23 @@ public class SuggestionIndex {
                 CompletionSuggestion compSuggestion =
                         response.getSuggest().getSuggestion(SUGGEST_FIELD);
 
-                List<CompletionSuggestion.Entry> entryList =
-                        compSuggestion.getEntries();
-                if (entryList != null) {
-                    // We request only 1 completion -> get(0)
-                    CompletionSuggestion.Entry entry = entryList.get(0);
-                    List<CompletionSuggestion.Entry.Option> options =
-                            entry.getOptions();
-                    /*
-                     * Loop through all suggestions
-                     */
-                    for (CompletionSuggestion.Entry.Option option : options) {
-                        suggestionStrings.add(new Suggestion(option.getText()
-                                .toString(), option.getPayloadAsString()));
+                if (compSuggestion != null) {
+
+                    List<CompletionSuggestion.Entry> entryList =
+                            compSuggestion.getEntries();
+                    if (entryList != null) {
+                        // We request only 1 completion -> get(0)
+                        CompletionSuggestion.Entry entry = entryList.get(0);
+                        List<CompletionSuggestion.Entry.Option> options =
+                                entry.getOptions();
+                        /*
+                         * Loop through all suggestions
+                         */
+                        for (CompletionSuggestion.Entry.Option option : options) {
+                            suggestionStrings.add(new Suggestion(option
+                                    .getText().toString(), option
+                                    .getPayloadAsString()));
+                        }
                     }
                 }
                 listener.suggestionsRetrieved(suggestionStrings);
