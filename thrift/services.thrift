@@ -74,16 +74,13 @@ service AdminService {
 	 * 
 	 * @throws IOException
 	 */
-	void addSingleTerm( 1: string index,
-			2: list<string> inputs,
-			3: string output,
-			4: string payload,
-			5: int weight),
-
-	/**
-	 * Adds a single term to the suggest Index (see above).
-	 */
-	void addSingleTerm(1: string index, 2: term SuggestionField),
+	void addSingleTerm(
+			1: string index,
+			2: string ID,
+			3: list<string> inputs,
+			4: string output,
+			5: string payload,
+			6: int weight),
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
@@ -93,7 +90,7 @@ service AdminService {
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteTerm(1: string index, 2: term ID),
+	bool deleteTerm(1: string index, 2: string ID),
 
 	/**
 	 * Deletes a whole index
@@ -112,8 +109,11 @@ service AdminService {
  * 
  **/
 service AnalyticsService {
-	// retrieves a list of top asked queries (which have been selected from users) the weight in the SuggestioField will be the amount of selections
-	list<SuggestionField> topQueriesSince(1: Date, 2: short k),
+	/**
+	 * retrieves a list of top asked queries (which have been selected from users)
+	 * the weight in the SuggestioField will be the amount of selections
+	 */
+	list<SuggestionField> topQueriesSince(1: int date, 2: short k),
 
 	// I want a function that enables to display the currently asked queries. This should be a polling http request
 

@@ -14,6 +14,15 @@
 		<maven.ssh-extension.version>2.6</maven.ssh-extension.version>
 		<junit.version>4.9</junit.version>
 		<elasticsearch.version>1.2.2</elasticsearch.version>
+
+		<!-- version of Java compiler plugin -->
+		<java.compiler-plugin.version>3.1</java.compiler-plugin.version>
+		<java.exec.version>1.2.1</java.exec.version>
+		<!-- version of source plugin -->
+		<java.source-plugin.version>2.2.1</java.source-plugin.version>
+		<!-- version of JavaDoc plugin -->
+		<java.javaDoc-plugin.version>2.9.1</java.javaDoc-plugin.version>
+
 	</properties>
 
 
@@ -78,9 +87,47 @@
 			<artifactId>libthrift</artifactId>
 			<version>0.9.1</version>
 		</dependency>
-
-
-
 	</dependencies>
+
+	<build>
+		<plugins>
+
+
+			<!-- attach source code -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>${java.source-plugin.version}</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- attach JavaDoc -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>${java.javaDoc-plugin.version}</version>
+				<configuration>
+					<encoding>UTF-8</encoding>
+					<show>private</show>
+				</configuration>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
 
 </project>
