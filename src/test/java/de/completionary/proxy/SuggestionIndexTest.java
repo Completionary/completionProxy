@@ -82,18 +82,35 @@ public class SuggestionIndexTest {
 
         client.addSingleTerm("1", Arrays.asList(new String[] {
             "bla", "blub"
-        }), "asdf", "payload", 1);
+        }), "asdf", "{}", 1);
         final List<Suggestion> results = new ArrayList<Suggestion>();
         client.findSuggestionsFor("b", 10, new ASuggestionsRetrievedListener() {
 
             public void suggestionsRetrieved(List<Suggestion> suggestions) {
-               results.addAll(suggestions);
+                results.addAll(suggestions);
             }
         });
         client.waitForGreen();
-        
+
+        /*
+         * Check if we find what we've stored
+         */
         Assert.assertEquals(results.size(), 1);
         Assert.assertEquals(results.get(0).suggestion, "asdf");
-        Assert.assertEquals(results.get(0).payload, "payload");
+        Assert.assertEquals(results.get(0).payload, "{}");
+
+        /*
+         * Check if we still find the term after deleting it
+         */
+        Assert.assertTrue(client.deleteSingleTerm("1"));
+        results.clear();
+        client.findSuggestionsFor("b", 10, new ASuggestionsRetrievedListener() {
+
+            public void suggestionsRetrieved(List<Suggestion> suggestions) {
+                results.addAll(suggestions);
+            }
+        });
+        client.waitForGreen();
+        Assert.assertEquals(0, results.size());
     }
 }

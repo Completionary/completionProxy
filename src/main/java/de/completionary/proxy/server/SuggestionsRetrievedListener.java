@@ -2,14 +2,14 @@ package de.completionary.proxy.server;
 
 import java.util.List;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Scope;
+import net.minidev.json.JSONObject;
+
 import org.zeromq.ZMQ;
 
-import net.minidev.json.JSONObject;
 import de.completionary.proxy.structs.Suggestion;
 
-public class SuggestionsRetrievedListener implements ASuggestionsRetrievedListener {
+public class SuggestionsRetrievedListener implements
+        ASuggestionsRetrievedListener {
 
     final byte[] clientID;
 
@@ -19,18 +19,17 @@ public class SuggestionsRetrievedListener implements ASuggestionsRetrievedListen
             final byte[] clientID) {
         this.clientID = clientID;
     }
-    
+
     /**
      * Returns a thread scoped socket to be used to send the response.
      * At the moment an array of sockets is stored and the sockets are stored in
      * this array and later retrieved based on the thread ID.
      * 
-     * TODO: Spring Bean does not work yet! The method is called every time.
+     * TODO: We could use thread scoped spring beans here! Now the method is
+     * executed every time it's called.
      * 
      * @return A thread scoped response socket
      */
-    @Bean
-    @Scope("thread")
     public ZMQ.Socket responseSocket() {
         int threadId = (int) Thread.currentThread().getId();
 
@@ -38,7 +37,6 @@ public class SuggestionsRetrievedListener implements ASuggestionsRetrievedListen
         if (threadId < sockets.length) {
             outSocket = sockets[threadId];
             if (outSocket != null) {
-                System.out.println(threadId + "\t" + outSocket);
                 return outSocket;
             }
         }
@@ -55,17 +53,18 @@ public class SuggestionsRetrievedListener implements ASuggestionsRetrievedListen
             sockets[threadId] = outSocket;
         }
 
-        System.out.println(threadId + "\t" + outSocket);
         return outSocket;
     }
 
+    /**
+     * Sends the retrieved suggestions back to the user
+     */
     public void suggestionsRetrieved(final List<Suggestion> suggestions) {
         JSONObject builder = new JSONObject();
         builder.put("suggestionList", suggestions);
 
         ZMQ.Socket outSocket = responseSocket();
 
-        System.out.println(outSocket);
         outSocket.send("message", ZMQ.SNDMORE); // Send "message"
         outSocket.send(clientID, ZMQ.SNDMORE); // Send "ID"
         outSocket.send(builder.toJSONString(/* JSONStyle.MAX_COMPRESS */));

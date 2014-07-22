@@ -157,7 +157,6 @@ public class SuggestionIndex {
      * @throws IOException
      */
     public boolean deleteSingleTerm(final String ID) throws IOException {
-
         DeleteResponse response =
                 client.prepareDelete(index, TYPE, ID).setRefresh(true)
                         .execute().actionGet();
