@@ -34,7 +34,7 @@ public class CompletionServer {
             System.out.println("Received " + msg);
 
             if (msg.equals("message")) {
-                index.findSuggestionsFor(data, 15,
+                index.async_findSuggestionsFor(data, 15,
                         new SuggestionsRetrievedListener(idBuffer));
             }
         }

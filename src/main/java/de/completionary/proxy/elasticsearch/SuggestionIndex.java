@@ -223,12 +223,15 @@ public class SuggestionIndex {
     /**
      * 
      * @param suggestRequest
-     *            String to be completed
+     *            The string to be completed
      * @param size
-     *            Maximum number of suggestion strings
-     * @return
+     *            The maximum number of suggestions to be returned
+     * 
+     * @param listener
+     *            Callback to be called as soon as the completion result has
+     *            arrived
      */
-    public void findSuggestionsFor(
+    public void async_findSuggestionsFor(
             final String suggestRequest,
             final int size,
             final ISuggestionsRetrievedListener listener) {
@@ -250,37 +253,74 @@ public class SuggestionIndex {
         future.addListener(new ActionListener<SuggestResponse>() {
 
             public void onResponse(SuggestResponse response) {
-                List<Suggestion> suggestionStrings =
-                        new ArrayList<Suggestion>(size);
-                CompletionSuggestion compSuggestion =
-                        response.getSuggest().getSuggestion(SUGGEST_FIELD);
 
-                if (compSuggestion != null) {
-
-                    List<CompletionSuggestion.Entry> entryList =
-                            compSuggestion.getEntries();
-                    if (entryList != null) {
-                        // We request only 1 completion -> get(0)
-                        CompletionSuggestion.Entry entry = entryList.get(0);
-                        List<CompletionSuggestion.Entry.Option> options =
-                                entry.getOptions();
-                        /*
-                         * Loop through all suggestions
-                         */
-                        for (CompletionSuggestion.Entry.Option option : options) {
-                            suggestionStrings.add(new Suggestion(option
-                                    .getText().toString(), option
-                                    .getPayloadAsString()));
-                        }
-                    }
-                }
-                listener.suggestionsRetrieved(suggestionStrings);
+                listener.suggestionsRetrieved(generateSuggestionsFromESRespone(
+                        response, size));
             }
 
             public void onFailure(Throwable e) {
                 // TODO To be implemented
             }
         });
+    }
+
+    /**
+     * Synchroneous way to acquire suggestions from a String
+     * 
+     * @param suggestRequest
+     *            The string to be completed
+     * @param size
+     *            The maximum number of suggestions to be returned
+     * @return A list of Suggestions fitting the requested string
+     */
+    public List<Suggestion> findSuggestionsFor(
+            final String suggestRequest,
+            final int size) {
+
+        CompletionSuggestionBuilder compBuilder =
+                new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
+                        SUGGEST_FIELD).text(suggestRequest);
+
+        SuggestRequestBuilder suggestRequestBuilder =
+                client.prepareSuggest(index).addSuggestion(compBuilder);
+
+        SuggestResponse response = suggestRequestBuilder.execute().actionGet();
+
+        return generateSuggestionsFromESRespone(response, size);
+    }
+
+    /**
+     * 
+     * @param response
+     * @return
+     */
+    private List<Suggestion> generateSuggestionsFromESRespone(
+            final SuggestResponse response,
+            final int size) {
+        List<Suggestion> suggestions = new ArrayList<Suggestion>(size);
+
+        CompletionSuggestion compSuggestion =
+                response.getSuggest().getSuggestion(SUGGEST_FIELD);
+
+        if (compSuggestion != null) {
+
+            List<CompletionSuggestion.Entry> entryList =
+                    compSuggestion.getEntries();
+            if (entryList != null) {
+                // We request only 1 completion -> get(0)
+                CompletionSuggestion.Entry entry = entryList.get(0);
+                List<CompletionSuggestion.Entry.Option> options =
+                        entry.getOptions();
+                /*
+                 * Loop through all suggestions
+                 */
+                for (CompletionSuggestion.Entry.Option option : options) {
+                    suggestions.add(new Suggestion(option.getText().toString(),
+                            option.getPayloadAsString()));
+                }
+            }
+        }
+        return suggestions;
     }
 
     /**

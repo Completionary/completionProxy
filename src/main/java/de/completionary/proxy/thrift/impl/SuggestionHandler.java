@@ -1,5 +1,6 @@
 package de.completionary.proxy.thrift.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.thrift.TException;
@@ -18,7 +19,7 @@ public class SuggestionHandler implements SuggestionService.AsyncIface {
             short k,
             final AsyncMethodCallback resultHandler) throws TException {
 
-        SuggestionIndex.getIndex(index).findSuggestionsFor(query, k,
+        SuggestionIndex.getIndex(index).async_findSuggestionsFor(query, k,
                 new ISuggestionsRetrievedListener() {
 
                     public void suggestionsRetrieved(
@@ -26,6 +27,21 @@ public class SuggestionHandler implements SuggestionService.AsyncIface {
                         resultHandler.onComplete(suggestions);
                     }
                 });
+    }
+
+    public static class SuggestionHandlerSync implements
+            SuggestionService.Iface {
+
+        public List<Suggestion> findSuggestionsFor(
+                String index,
+                String query,
+                short k) throws TException {
+            //            return   SuggestionIndex.getIndex(index).findSuggestionsFor(query, k);
+            List<Suggestion> suggestions = new ArrayList<Suggestion>();
+            suggestions.add(new Suggestion("adsf", "payload"));
+            return suggestions;
+        }
+
     }
 
 }
