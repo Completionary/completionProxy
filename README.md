@@ -22,7 +22,7 @@ git checkout 0.9.1 -b build
 make -j
 sudo make install
 ```
-</dd>
-  <dt>Archlinux</dt>
-  <dd>https://aur.archlinux.org/packages/thrift/</dd>
-</dl>
+
+## Archlinux
+https://aur.archlinux.org/packages/thrift/
+
