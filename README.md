@@ -10,7 +10,21 @@ To make this code compilable you have to generate the thrift files. To install t
 
 <dl>
   <dt>Debian Wheezy/Ubuntu</dt>
-  <dd>https://gist.github.com/DamonOehlman/8729033</dd>
+  <dd>
+    sudo apt-get install git build-essential cmake pkg-config libboost-dev libboost-test-dev \
+     libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config \
+     libssl-dev libsoup2.4-dev libboost-system-dev libboost-filesystem-dev \
+     libogg-dev libtheora-dev libasound2-dev libvorbis-dev libpango1.0-dev \
+     libvisual-0.4-dev libffi-dev libgmp-dev
+
+git clone https://git-wip-us.apache.org/repos/asf/thrift.git thrift
+cd thrift/
+git checkout 0.9.1 -b build
+./bootstrap.sh
+./configure
+make -j
+sudo make install
+</dd>
   <dt>Archlinux</dt>
   <dd>https://aur.archlinux.org/packages/thrift/</dd>
 </dl>
