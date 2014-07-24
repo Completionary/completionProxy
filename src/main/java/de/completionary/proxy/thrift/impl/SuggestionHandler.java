@@ -36,10 +36,7 @@ public class SuggestionHandler implements SuggestionService.AsyncIface {
                 String index,
                 String query,
                 short k) throws TException {
-            //            return   SuggestionIndex.getIndex(index).findSuggestionsFor(query, k);
-            List<Suggestion> suggestions = new ArrayList<Suggestion>();
-            suggestions.add(new Suggestion("adsf", "payload"));
-            return suggestions;
+            return SuggestionIndex.getIndex(index).findSuggestionsFor(query, k);
         }
 
     }
