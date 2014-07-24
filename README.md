@@ -11,6 +11,7 @@ To make this code compilable you have to generate the thrift files. To install t
 <dl>
   <dt>Debian Wheezy/Ubuntu</dt>
   <dd>
+  ```
     sudo apt-get install git build-essential cmake pkg-config libboost-dev libboost-test-dev \
      libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config \
      libssl-dev libsoup2.4-dev libboost-system-dev libboost-filesystem-dev \
@@ -24,6 +25,7 @@ git checkout 0.9.1 -b build
 ./configure
 make -j
 sudo make install
+```
 </dd>
   <dt>Archlinux</dt>
   <dd>https://aur.archlinux.org/packages/thrift/</dd>
