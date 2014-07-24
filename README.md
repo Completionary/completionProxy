@@ -10,7 +10,7 @@ To make this code compilable you have to generate the thrift files. To install t
 
 <dl>
   <dt>Debian Wheezy</dt>
-  <dd>[[https://gist.github.com/DamonOehlman/8729033]]</dd>
+  <dd>https://gist.github.com/DamonOehlman/8729033</dd>
   <dt>Archlinux</dt>
-  <dd>[[https://aur.archlinux.org/packages/thrift/]]</dd>
+  <dd>https://aur.archlinux.org/packages/thrift/</dd>
 </dl>
