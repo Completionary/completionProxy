@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ListenableActionFuture;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
@@ -17,10 +18,10 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
 import org.elasticsearch.action.admin.indices.optimize.OptimizeRequest;
-import org.elasticsearch.action.bulk.BulkItemResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
@@ -31,9 +32,8 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
-import de.completionary.proxy.server.ISuggestionsRetrievedListener;
-import de.completionary.proxy.structs.SuggestionField;
 import de.completionary.proxy.thrift.services.Suggestion;
+import de.completionary.proxy.thrift.services.SuggestionField;
 
 public class SuggestionIndex {
 
@@ -117,9 +117,17 @@ public class SuggestionIndex {
      * request and refreshes the index afterwards.
      * If the ID of a term is null, the output string will be used.
      * 
+     * @param terms
+     *            The suggestion fields to be added
+     * @param listener
+     *            Callback that will be passed the number of milliseconds the
+     *            async ES call took
      * @throws IOException
      */
-    public void addTerms(final List<SuggestionField> terms) throws IOException {
+    public void async_addTerms(
+            final List<SuggestionField> terms,
+            final AsyncMethodCallback<Long> listener) throws IOException {
+
         BulkRequestBuilder bulkRequest = client.prepareBulk();
         for (SuggestionField field : terms) {
             bulkRequest.add(client.prepareIndex(index, TYPE, field.ID)
@@ -127,14 +135,20 @@ public class SuggestionIndex {
                             generateFieldJS(field.input, field.output,
                                     field.payload, field.weight)));
         }
-        BulkResponse bulkResponse =
-                bulkRequest.setRefresh(true).execute().actionGet();
 
-        if (bulkResponse.hasFailures()) {
-            for (BulkItemResponse item : bulkResponse.getItems()) {
-                System.err.println(item.getFailureMessage());
+        ListenableActionFuture<BulkResponse> future =
+                bulkRequest.setRefresh(true).execute();
+
+        future.addListener(new ActionListener<BulkResponse>() {
+
+            public void onResponse(BulkResponse response) {
+                listener.onComplete(response.getTookInMillis());
             }
-        }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
     }
 
     /**
@@ -154,18 +168,41 @@ public class SuggestionIndex {
      *            The payload (e.g. images) stored with the field
      * @param weight
      *            The weight of the term
-     * 
+     * @param listener
+     *            Callback that will be passed the number of milliseconds the
+     *            async ES call took
      * @throws IOException
      */
-    public void addSingleTerm(
+    public void async_addSingleTerm(
             final String ID,
             final List<String> inputs,
             final String output,
             final String payload,
-            final int weight) throws IOException {
+            final int weight,
+            final AsyncMethodCallback<Long> listener) throws IOException {
         client.prepareIndex(index, TYPE, ID)
                 .setSource(generateFieldJS(inputs, output, payload, weight))
                 .setRefresh(true).execute().actionGet();
+
+        ListenableActionFuture<IndexResponse> future =
+                client.prepareIndex(index, TYPE, ID)
+                        .setSource(
+                                generateFieldJS(inputs, output, payload, weight))
+                        .setRefresh(true).execute();
+
+        final long start = System.currentTimeMillis();
+
+        future.addListener(new ActionListener<IndexResponse>() {
+
+            public void onResponse(IndexResponse response) {
+                listener.onComplete(System.currentTimeMillis() - start);
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
+
     }
 
     /**
@@ -176,13 +213,24 @@ public class SuggestionIndex {
      * @return <true> in case the element has been found and deleted
      * @throws IOException
      */
-    public boolean deleteSingleTerm(final String ID) throws IOException {
-        DeleteResponse response =
+    public void async_deleteSingleTerm(
+            final String ID,
+            final AsyncMethodCallback<Boolean> listener) throws IOException {
+
+        ListenableActionFuture<DeleteResponse> future =
                 client.prepareDelete(index, TYPE, ID).setRefresh(true)
-                        .execute().actionGet();
-        System.out.println("Deleting " + ID + ": " + response.isFound());
-        expungeDeletes();
-        return response.isFound();
+                        .execute();
+
+        future.addListener(new ActionListener<DeleteResponse>() {
+
+            public void onResponse(DeleteResponse response) {
+                listener.onComplete(response.isFound());
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
     }
 
     /**
@@ -234,7 +282,7 @@ public class SuggestionIndex {
     public void async_findSuggestionsFor(
             final String suggestRequest,
             final int size,
-            final ISuggestionsRetrievedListener listener) {
+            final AsyncMethodCallback<List<Suggestion>> listener) {
 
         CompletionSuggestionBuilder compBuilder =
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
@@ -246,20 +294,15 @@ public class SuggestionIndex {
         ListenableActionFuture<SuggestResponse> future =
                 suggestRequestBuilder.execute();
 
-        /*
-         * Trigger listener.suggestionsRetrieved as soon as we've received the
-         * answer from ES
-         */
         future.addListener(new ActionListener<SuggestResponse>() {
-
             public void onResponse(SuggestResponse response) {
 
-                listener.suggestionsRetrieved(generateSuggestionsFromESRespone(
-                        response, size));
+                listener.onComplete(generateSuggestionsFromESRespone(response,
+                        size));
             }
 
             public void onFailure(Throwable e) {
-                // TODO To be implemented
+                listener.onError(new Exception(e.getMessage()));
             }
         });
     }

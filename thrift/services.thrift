@@ -2,6 +2,7 @@ namespace java de.completionary.proxy.thrift.services
 
 typedef i16 short
 typedef i32 int
+typedef i65 long
 
 /*
  * Data sent back from the suggestion service
@@ -71,10 +72,11 @@ service AdminService {
 	 *            The payload (e.g. images) stored with the field
 	 * @param weight
 	 *            The weight of the term
-	 * 
+	 * @return Number of milliseconds passed on the server side
+	 *
 	 * @throws IOException
 	 */
-	void addSingleTerm(
+	long addSingleTerm(
 			1: string index,
 			2: string ID,
 			3: list<string> inputs,
@@ -84,8 +86,9 @@ service AdminService {
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
+	 * @return Number of milliseconds passed on the server side
 	 */
-	void addTerms (1: string index, 2: list<SuggestionField> terms),
+	long addTerms (1: string index, 2: list<SuggestionField> terms),
 
 	/**
 	 * Removes a term from the Database

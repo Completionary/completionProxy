@@ -7,18 +7,17 @@ import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
-import de.completionary.proxy.thrift.impl.SuggestionHandler;
-import de.completionary.proxy.thrift.services.SuggestionService;
-import de.completionary.proxy.thrift.services.SuggestionService.AsyncIface;
+import de.completionary.proxy.thrift.handler.AdminHandler;
+import de.completionary.proxy.thrift.services.AdminService;
 
-public class SuggestionServer {
+public class AdminServer {
 
     public static void startNewInstance() {
         try {
             Runnable simple = new Runnable() {
 
                 public void run() {
-                    simple();
+                    server();
                 }
             };
 
@@ -30,18 +29,18 @@ public class SuggestionServer {
         }
     }
 
-    private static void simple() {
-
+    private static void server() {
         try {
-            
-            TNonblockingServerTransport trans = new TNonblockingServerSocket(9090);
+
+            TNonblockingServerTransport trans =
+                    new TNonblockingServerSocket(9090);
             TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
             args.transportFactory(new TFramedTransport.Factory());
             args.protocolFactory(new TBinaryProtocol.Factory());
-            args.processor(new SuggestionService.AsyncProcessor<AsyncIface>(new SuggestionHandler()));
+            args.processor(new AdminService.AsyncProcessor<AdminService.AsyncIface>(
+                    new AdminHandler()));
             TServer server = new TNonblockingServer(args);
             server.serve();
-            
 
             //            
             //            TServerSocket serverTransport = new TServerSocket(9090);

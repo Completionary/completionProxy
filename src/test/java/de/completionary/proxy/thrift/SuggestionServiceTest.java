@@ -19,7 +19,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
-import de.completionary.proxy.thrift.server.SuggestionServer;
+import de.completionary.proxy.thrift.server.AdminServer;
 import de.completionary.proxy.thrift.services.Suggestion;
 import de.completionary.proxy.thrift.services.SuggestionService;
 
@@ -31,7 +31,7 @@ public class SuggestionServiceTest {
 
     @BeforeClass
     public static void setUpBeforeClass() {
-        SuggestionServer.startNewInstance();
+        AdminServer.startNewInstance();
 
         transport = new TFramedTransport(new TSocket("localhost", 9090));
         TProtocol protocol = new TBinaryProtocol(transport);
