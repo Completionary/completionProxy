@@ -34,8 +34,8 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
+import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
-import de.completionary.proxy.thrift.services.suggestion.SuggestionField;
 
 public class SuggestionIndex {
 

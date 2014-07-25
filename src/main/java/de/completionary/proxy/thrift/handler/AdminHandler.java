@@ -9,7 +9,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.admin.AdminService;
-import de.completionary.proxy.thrift.services.suggestion.SuggestionField;
+import de.completionary.proxy.thrift.services.admin.SuggestionField;
 
 public class AdminHandler implements AdminService.AsyncIface {
 
