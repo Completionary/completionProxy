@@ -25,6 +25,13 @@ sudo make install
 
 ## Archlinux
 https://aur.archlinux.org/packages/thrift/
+```bash
+wget https://aur.archlinux.org/packages/th/thrift/thrift.tar.gz
+tar -xvzf thrift.tar.gz
+cd thrift
+makepkg -s
+sudo pacman -U thrift*.tar.xz
+```
 
 # Installation and running
 ```
