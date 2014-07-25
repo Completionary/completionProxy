@@ -34,7 +34,6 @@ public class SuggestionIndexTest {
     public static void setUpBeforeClass() {
         Random r = new Random();
         index = "testindex" + r.nextInt();
-        index = "testindex1978505353";
     }
 
     @AfterClass
