@@ -30,7 +30,7 @@ public class AdminHandler implements AdminService.AsyncIface {
                         }
 
                         public void onError(Exception e) {
-                            e.printStackTrace();
+                            resultHandler.onError(e);
                         }
                     });
         } catch (IOException e) {
@@ -53,8 +53,7 @@ public class AdminHandler implements AdminService.AsyncIface {
                         }
 
                         public void onError(Exception e) {
-                            e.printStackTrace();
-
+                            resultHandler.onError(e);
                         }
                     });
         } catch (IOException e) {
@@ -64,7 +63,7 @@ public class AdminHandler implements AdminService.AsyncIface {
 
     }
 
-    public void deleteTerm(
+    public void deleteSingleTerm(
             String index,
             String ID,
             final AsyncMethodCallback resultHandler) throws TException {
@@ -77,20 +76,41 @@ public class AdminHandler implements AdminService.AsyncIface {
                         }
 
                         public void onError(Exception e) {
+                            resultHandler.onError(e);
+                        }
+                    });
+        } catch (IOException e) {
+            resultHandler.onError(e);
+        }
+    }
+
+    public void deleteTerms(
+            String index,
+            List<String> IDs,
+            final AsyncMethodCallback resultHandler) throws TException {
+        try {
+            SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
+                    new AsyncMethodCallback<Long>() {
+
+                        public void onComplete(Long b) {
+                            resultHandler.onComplete(b);
+                        }
+
+                        public void onError(Exception e) {
                             e.printStackTrace();
                         }
                     });
         } catch (IOException e) {
-            e.printStackTrace();
             resultHandler.onError(e);
         }
+
     }
 
     public void deleteIndex(
             String index,
             final AsyncMethodCallback resultHandler) throws TException {
         try {
-            SuggestionIndex.getIndex(index).delete();
+            SuggestionIndex.delete(index);
         } catch (InterruptedException e) {
             resultHandler.onError(e);
         } catch (ExecutionException e) {
@@ -98,10 +118,23 @@ public class AdminHandler implements AdminService.AsyncIface {
         }
     }
 
-    public void truncateIndex(String index, AsyncMethodCallback resultHandler)
-            throws TException {
-        // TODO Auto-generated method stub
+    public void truncateIndex(
+            String index,
+            final AsyncMethodCallback resultHandler) throws TException {
+        try {
+            SuggestionIndex.getIndex(index).async_truncate(
+                    new AsyncMethodCallback<Long>() {
 
+                        public void onError(Exception e) {
+                            resultHandler.onError(e);
+                        }
+
+                        public void onComplete(Long time) {
+                            resultHandler.onComplete(time);
+                        }
+                    });
+        } catch (Exception e) {
+            resultHandler.onError(e);
+        }
     }
-
 }

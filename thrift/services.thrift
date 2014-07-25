@@ -2,7 +2,7 @@ namespace java de.completionary.proxy.thrift.services
 
 typedef i16 short
 typedef i32 int
-typedef i65 long
+typedef i64 long
 
 /*
  * Data sent back from the suggestion service
@@ -95,7 +95,13 @@ service AdminService {
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteTerm(1: string index, 2: string ID),
+	bool deleteSingleTerm(1: string index, 2: string ID),
+
+	/**
+	 * Removes several terms from the Database
+	 * @return Number of milliseconds passed on the server side
+	 */
+	long deleteTerms(1: string index, 2: list<string> ID),
 
 	/**
 	 * Deletes a whole index
@@ -104,8 +110,9 @@ service AdminService {
 
 	/**
 	 * Clears an Index (deletes all fields)
+	 * @return The time in milliseconds spend on the server side
 	 */
-	bool truncateIndex(1: string index),
+	long truncateIndex(1: string index),
 }
 /**
  * Serice to retrieve analytics for API customer
@@ -125,28 +132,4 @@ service AnalyticsService {
 	// I want a function to display how much traffic has been used
 
 	// I want a function that displays the current payment plan
-}
-
-/**
- * basic service that enables user login 
- * 
- * 
- **/
-service AuthenticationService {
-// register account
-// delete account
-// login
-// forgotPassword
-}
-
-/**
- * 
- * 
- * 
- **/
-service PaymentService {
-// buySubscription(),
-// cancleSubscription(),
-// upgradeSubscription(),
-// warnUser(), // e.g. queries start increase over subscription limit (does this maybe have to be in a monitoring service?)
 }

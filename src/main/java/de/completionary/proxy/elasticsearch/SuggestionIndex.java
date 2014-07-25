@@ -236,6 +236,43 @@ public class SuggestionIndex {
     }
 
     /**
+     * Deletes a list of terms in the DB within one single bulk request and
+     * refreshes the index afterwards.
+     * 
+     * @param ID
+     *            ID of the field to be deleted
+     * @param listener
+     *            Callback to be called after executing the command. The
+     *            returned Boolean will store if the element was found.
+     * @return <true> in case the element has been found and deleted
+     * @throws IOException
+     */
+    public void async_deleteTerms(
+            final List<String> IDs,
+            final AsyncMethodCallback<Long> listener) throws IOException {
+
+        BulkRequestBuilder bulkRequest = client.prepareBulk();
+        for (String ID : IDs) {
+            bulkRequest.add(client.prepareDelete(index, TYPE, ID));
+        }
+
+        ListenableActionFuture<BulkResponse> future =
+                bulkRequest.setRefresh(true).execute();
+
+        future.addListener(new ActionListener<BulkResponse>() {
+
+            public void onResponse(BulkResponse response) {
+                listener.onComplete(response.getTookInMillis());
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
+
+    }
+
+    /**
      * Creates a jason node for a suggestion field
      * 
      * @see SuggestionIndex.addSingleTerm
