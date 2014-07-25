@@ -1,12 +1,26 @@
-outDir=../src/main/java/ 
+ifndef lang
+$(error lang is not set (try e.g. make all lang=java))
+endif
 
-admin:
-	thrift --gen java --out $(outDir) $@.thrift
-analytics:
-	thrift --gen java --out $(outDir) $@.thrift
-streaming:
-	thrift --gen java --out $(outDir) $@.thrift
-suggestion:
-	thrift --gen java --out $(outDir) $@.thrift
+ifndef outDir
+ifeq ($(lang),java)
+outDir="../src/main/java/"
+else
+outDir="gen-$(lang)"
+endif
+endif
+
+pre-build:
+	echo "The main out-directory is $(outDir)"
+	mkdir -p $(outDir)
+
+admin: pre-build
+	thrift --gen $(lang) --out $(outDir) $@.thrift
+analytics: pre-build
+	thrift --gen $(lang) --out $(outDir) $@.thrift
+streaming: pre-build
+	thrift --gen $(lang) --out $(outDir) $@.thrift
+suggestion: pre-build
+	thrift --gen $(lang) --out $(outDir) $@.thrift
 
 all: admin analytics streaming suggestion
