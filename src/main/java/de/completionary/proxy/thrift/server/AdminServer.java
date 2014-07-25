@@ -1,6 +1,6 @@
 package de.completionary.proxy.thrift.server;
 
-import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TFramedTransport;
@@ -20,7 +20,7 @@ public class AdminServer extends Thread {
                     new TNonblockingServerSocket(ProxyOptions.ADMIN_SERVER_PORT);
             TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
             args.transportFactory(new TFramedTransport.Factory());
-            args.protocolFactory(new TBinaryProtocol.Factory());
+            args.protocolFactory(new TCompactProtocol.Factory());
             args.processor(new AdminService.AsyncProcessor<AdminService.AsyncIface>(
                     new AdminHandler()));
             TServer server = new TNonblockingServer(args);
