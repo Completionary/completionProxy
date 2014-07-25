@@ -34,11 +34,12 @@ public class SuggestionIndexTest {
     public static void setUpBeforeClass() {
         Random r = new Random();
         index = "testindex" + r.nextInt();
+        index = "testindex1978505353";
     }
 
     @AfterClass
     public static void tearDownAfterClass() throws Exception {
-        SuggestionIndex.delete(index);
+        //SuggestionIndex.delete(index);
     }
 
     private CountDownLatch lock = new CountDownLatch(1);
@@ -119,6 +120,10 @@ public class SuggestionIndexTest {
         Assert.assertTrue("async_addSingleTerm has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
         client.waitForGreen();
+
+        /*
+         * Find that term
+         */
         final List<Suggestion> results = new ArrayList<Suggestion>();
         client.async_findSuggestionsFor("b", 10,
                 new AsyncMethodCallback<List<Suggestion>>() {
@@ -184,10 +189,5 @@ public class SuggestionIndexTest {
         Assert.assertTrue("async_findSuggestionsFor has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
         Assert.assertEquals(0, results.size());
-
-        /*
-         * Delete the index
-         */
-        SuggestionIndex.delete(index);
     }
 }
