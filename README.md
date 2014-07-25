@@ -7,7 +7,7 @@ Proxy implementing an interface to the suggestion index (elastic search) and the
 To make this code compilable you have to generate the thrift files. To install the thrift compiler please see the following links:
 
 ## Debian Wheezy/Ubuntu
-```
+```bash
 sudo apt-get install git build-essential cmake pkg-config libboost-dev libboost-test-dev \
 libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config \
 libssl-dev libsoup2.4-dev libboost-system-dev libboost-filesystem-dev \
@@ -33,7 +33,7 @@ sudo pacman -U thrift*.tar.xz
 ```
 
 # Installation and running
-```
+```bash
 git clone git@github.com:Completionary/completionProxy.git
 cd completionProxy/thrift
 make all lang=java
