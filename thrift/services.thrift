@@ -6,8 +6,10 @@ typedef i65 long
 
 /*
  * Data sent back from the suggestion service
- * @param suggestion The suggested string (equals 'output' of SuggestionField)
- * @param payload The additional data stored with the suggested term
+ * @param suggestion 
+ *			  The suggested string (equals 'output' of SuggestionField)
+ * @param payload 
+ *			  The additional data stored with the suggested term
  */
 struct Suggestion {
 	1: string suggestion;

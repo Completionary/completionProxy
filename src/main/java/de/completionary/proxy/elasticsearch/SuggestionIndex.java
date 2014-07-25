@@ -13,11 +13,13 @@ import java.util.concurrent.ExecutionException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ListenableActionFuture;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
 import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.admin.indices.exists.indices.IndicesExistsRequest;
-import org.elasticsearch.action.admin.indices.optimize.OptimizeRequest;
+import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingResponse;
+import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
@@ -102,6 +104,7 @@ public class SuggestionIndex {
             if (!indexExists) {
                 createIndexIfNotExists();
                 addMapping(TYPE);
+
             }
         } catch (ExecutionException e) {
             e.printStackTrace();
@@ -115,7 +118,6 @@ public class SuggestionIndex {
     /**
      * Adds a list of SuggestionFields (terms) to the DB within one single bulk
      * request and refreshes the index afterwards.
-     * If the ID of a term is null, the output string will be used.
      * 
      * @param terms
      *            The suggestion fields to be added
@@ -210,6 +212,9 @@ public class SuggestionIndex {
      * 
      * @param ID
      *            ID of the field to be deleted
+     * @param listener
+     *            Callback to be called after executing the command. The
+     *            returned Boolean will store if the element was found.
      * @return <true> in case the element has been found and deleted
      * @throws IOException
      */
@@ -288,13 +293,12 @@ public class SuggestionIndex {
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
                         SUGGEST_FIELD).text(suggestRequest);
 
-        SuggestRequestBuilder suggestRequestBuilder =
-                client.prepareSuggest(index).addSuggestion(compBuilder);
-
         ListenableActionFuture<SuggestResponse> future =
-                suggestRequestBuilder.execute();
+                client.prepareSuggest(index).addSuggestion(compBuilder)
+                        .execute();
 
         future.addListener(new ActionListener<SuggestResponse>() {
+
             public void onResponse(SuggestResponse response) {
 
                 listener.onComplete(generateSuggestionsFromESRespone(response,
@@ -346,9 +350,9 @@ public class SuggestionIndex {
                 response.getSuggest().getSuggestion(SUGGEST_FIELD);
 
         if (compSuggestion != null) {
-
             List<CompletionSuggestion.Entry> entryList =
                     compSuggestion.getEntries();
+
             if (entryList != null) {
                 // We request only 1 completion -> get(0)
                 CompletionSuggestion.Entry entry = entryList.get(0);
@@ -377,8 +381,11 @@ public class SuggestionIndex {
      * @param type
      *            The type of the mapping
      * @throws IOException
+     * @throws ExecutionException
+     * @throws InterruptedException
      */
-    private void addMapping(String type) throws IOException {
+    private void addMapping(String type) throws IOException,
+            InterruptedException, ExecutionException {
         XContentBuilder js =
                 jsonBuilder().startObject().startObject(type)
                         .startObject("properties").startObject("name")
@@ -391,6 +398,39 @@ public class SuggestionIndex {
 
         client.admin().indices().preparePutMapping(index).setType(type)
                 .setSource(js).get();
+    }
+
+    private void async_addMapping(
+            String type,
+            final AsyncMethodCallback<Boolean> listener) throws IOException,
+            InterruptedException, ExecutionException {
+
+        XContentBuilder js =
+                jsonBuilder().startObject().startObject(type)
+                        .startObject("properties").startObject("name")
+                        .field("type", "string").endObject()
+                        .startObject(SUGGEST_FIELD).field("type", "completion")
+                        .field("index_analyzer", "simple")
+                        .field("search_analyzer", "simple")
+                        .field("payloads", true).endObject().endObject()
+                        .endObject().endObject();
+
+        ListenableActionFuture<PutMappingResponse> future =
+                client.admin().indices().preparePutMapping(index).setType(type)
+                        .setSource(js).execute();
+
+        future.addListener(new ActionListener<PutMappingResponse>() {
+
+            public void onResponse(PutMappingResponse response) {
+
+                listener.onComplete(response.isAcknowledged());
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
+
     }
 
     /**
@@ -427,8 +467,8 @@ public class SuggestionIndex {
      * @throws InterruptedException
      * @throws ExecutionException
      */
-    public void delete() throws InterruptedException, ExecutionException {
-
+    public static void delete(final String index) throws InterruptedException,
+            ExecutionException {
         final DeleteIndexRequest deleteIndexRequest =
                 new DeleteIndexRequest(index);
         try {
@@ -439,13 +479,12 @@ public class SuggestionIndex {
                 throw e;
             }
         }
+        indices.remove(index);
     }
 
     /**
      * Empties the index (all fields are deleted)
      * 
-     * @param index
-     *            The index to be deleted
      * @throws InterruptedException
      * @throws ExecutionException
      * @throws IOException
@@ -458,15 +497,111 @@ public class SuggestionIndex {
         addMapping(TYPE);
     }
 
+    /**
+     * Empties the index (all fields are deleted)
+     * 
+     * @param listener
+     *            Callback that will be passed the number of milliseconds the
+     *            async ES call took
+     * @throws InterruptedException
+     * @throws ExecutionException
+     * @throws IOException
+     */
+    public void async_truncate(final AsyncMethodCallback<Long> listener)
+            throws InterruptedException, ExecutionException, IOException {
+
+        final long start = System.currentTimeMillis();
+
+        ListenableActionFuture<DeleteMappingResponse> future =
+                client.admin().indices().prepareDeleteMapping(index)
+                        .setType(TYPE).execute();
+
+        /*
+         * Execute async truncate
+         */
+        future.addListener(new ActionListener<DeleteMappingResponse>() {
+
+            public void onResponse(DeleteMappingResponse response) {
+
+                /*
+                 * Execute async waitForYellow
+                 */
+                async_waitForYellow(new AsyncMethodCallback<Object>() {
+
+                    public void onComplete(Object o) {
+                        try {
+
+                            /*
+                             * Recreate the mapping asynchronously
+                             */
+                            async_addMapping(TYPE,
+                                    new AsyncMethodCallback<Boolean>() {
+
+                                        public void onComplete(Boolean b) {
+                                            if (b) {
+                                                listener.onComplete(System
+                                                        .currentTimeMillis()
+                                                        - start);
+                                            } else {
+                                                listener.onError(new Exception(
+                                                        "Unable to recreate Mapping after truncation"));
+                                            }
+                                        }
+
+                                        public void onError(Exception e) {
+                                            listener.onError(new Exception(e
+                                                    .getMessage()));
+                                        }
+                                    });
+
+                        } catch (Exception e) {
+                            listener.onError(e);
+                        }
+                    }
+
+                    public void onError(Exception e) {
+                        listener.onError(new Exception(e.getMessage()));
+                    }
+                });
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
+    }
+
+    /**
+     * 
+     * @param listener
+     *            Callback that will be called after success with null
+     */
+    public void async_waitForYellow(final AsyncMethodCallback<Object> listener) {
+        ListenableActionFuture<ClusterHealthResponse> future =
+                client.admin().cluster().prepareHealth().setIndices(index)
+                        .setWaitForYellowStatus().execute();
+
+        future.addListener(new ActionListener<ClusterHealthResponse>() {
+
+            public void onResponse(ClusterHealthResponse response) {
+                listener.onComplete(null);
+            }
+
+            public void onFailure(Throwable e) {
+                listener.onError(new Exception(e.getMessage()));
+            }
+        });
+
+    }
+
     public void waitForYellow() {
-        client.admin().cluster().prepareHealth().setIndices(index);
+        client.admin().cluster().prepareHealth().setIndices(index).execute()
+                .actionGet();
     }
 
     public void waitForGreen() {
-        //        client.admin().cluster().prepareHealth().setIndices(index)
-        //                .setWaitForGreenStatus().execute().actionGet();
-        client.admin().indices().optimize(new OptimizeRequest(index))
-                .actionGet();
+        client.admin().cluster().prepareHealth().setIndices(index)
+                .setWaitForGreenStatus().execute().actionGet();
     }
 
     private void expungeDeletes() {

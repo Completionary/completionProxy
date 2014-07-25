@@ -7,14 +7,19 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import junit.framework.Assert;
 
+import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
-import de.completionary.proxy.server.ISuggestionsRetrievedListener;
 import de.completionary.proxy.thrift.services.Suggestion;
 
 /**
@@ -22,6 +27,21 @@ import de.completionary.proxy.thrift.services.Suggestion;
  * 
  */
 public class SuggestionIndexTest {
+
+    private static String index = "";
+
+    @BeforeClass
+    public static void setUpBeforeClass() {
+        Random r = new Random();
+        index = "testindex" + r.nextInt();
+    }
+
+    @AfterClass
+    public static void tearDownAfterClass() throws Exception {
+        SuggestionIndex.delete(index);
+    }
+
+    private CountDownLatch lock = new CountDownLatch(1);
 
     //    @Test
     //    public void speedTest() {
@@ -77,40 +97,97 @@ public class SuggestionIndexTest {
     @Test
     public void Test() throws InterruptedException, ExecutionException,
             IOException {
-        SuggestionIndex client = SuggestionIndex.getIndex("index");
-        client.truncate();
+        SuggestionIndex client = SuggestionIndex.getIndex(index);
 
-        client.addSingleTerm("1", Arrays.asList(new String[] {
+        /*
+         * Add a term
+         */
+        client.async_addSingleTerm("1", Arrays.asList(new String[] {
             "bla", "blub"
-        }), "asdf", "{}", 1);
-        final List<Suggestion> results = new ArrayList<Suggestion>();
-        client.async_findSuggestionsFor("b", 10, new ISuggestionsRetrievedListener() {
+        }), "output", "payload", 1, new AsyncMethodCallback<Long>() {
 
-            public void suggestionsRetrieved(List<Suggestion> suggestions) {
-                results.addAll(suggestions);
+            public void onError(Exception e) {
+                e.printStackTrace();
+                Assert.fail("An Error has occured (see above)");
+                lock.countDown();
+            }
+
+            public void onComplete(Long arg0) {
+                lock.countDown();
             }
         });
+        Assert.assertTrue("async_addSingleTerm has timed out",
+                lock.await(2000, TimeUnit.MILLISECONDS));
         client.waitForGreen();
+        final List<Suggestion> results = new ArrayList<Suggestion>();
+        client.async_findSuggestionsFor("b", 10,
+                new AsyncMethodCallback<List<Suggestion>>() {
+
+                    public void onError(Exception e) {
+                        e.printStackTrace();
+                        Assert.fail("An Error has occured (see above)");
+                        lock.countDown();
+                    }
+
+                    public void onComplete(List<Suggestion> suggestions) {
+                        Assert.assertNotNull("An Error has occured", results);
+                        results.addAll(suggestions);
+                        lock.countDown();
+                    }
+                });
+        Assert.assertTrue("async_findSuggestionsFor has timed out",
+                lock.await(2000, TimeUnit.MILLISECONDS));
 
         /*
          * Check if we find what we've stored
          */
-        Assert.assertEquals(results.size(), 1);
-        Assert.assertEquals(results.get(0).suggestion, "asdf");
-        Assert.assertEquals(results.get(0).payload, "{}");
+        Assert.assertEquals(1, results.size());
+        Assert.assertEquals("output", results.get(0).suggestion);
+        Assert.assertEquals("payload", results.get(0).payload);
 
         /*
          * Check if we still find the term after deleting it
          */
-        Assert.assertTrue(client.deleteSingleTerm("1"));
-        results.clear();
-        client.async_findSuggestionsFor("b", 10, new ISuggestionsRetrievedListener() {
+        client.async_deleteSingleTerm("1", new AsyncMethodCallback<Boolean>() {
 
-            public void suggestionsRetrieved(List<Suggestion> suggestions) {
-                results.addAll(suggestions);
+            public void onError(Exception e) {
+                e.printStackTrace();
+                Assert.fail("An Error has occured (see above)");
+                lock.countDown();
+            }
+
+            public void onComplete(Boolean b) {
+                Assert.assertTrue(b);
+                lock.countDown();
             }
         });
-        client.waitForGreen();
+
+        Assert.assertTrue("async_deleteSingleTerm has timed out",
+                lock.await(2000, TimeUnit.MILLISECONDS));
+
+        results.clear();
+        client.async_findSuggestionsFor("b", 10,
+                new AsyncMethodCallback<List<Suggestion>>() {
+
+                    public void onError(Exception e) {
+                        e.printStackTrace();
+                        Assert.fail("An Error has occured (see above)");
+                        lock.countDown();
+
+                    }
+
+                    public void onComplete(List<Suggestion> suggestions) {
+                        results.addAll(suggestions);
+                        lock.countDown();
+                    }
+                });
+        Assert.assertTrue("async_findSuggestionsFor has timed out",
+                lock.await(2000, TimeUnit.MILLISECONDS));
         Assert.assertEquals(0, results.size());
+
+        /*
+         * Delete the index
+         */
+        SuggestionIndex.delete(index);
     }
 }
