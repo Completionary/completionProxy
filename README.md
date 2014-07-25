@@ -47,7 +47,7 @@ If you want to communicate with our thrift API, you can execute `make all lang=$
 ### Java
 Here you can find a simple example of how to connect to the admin service:
 
-```
+```java
 TTransport transport =
     new TFramedTransport(new TSocket("localhost", ProxyOptions.ADMIN_SERVER_PORT));
 TProtocol protocol = new TCompactProtocol(transport);
