@@ -124,6 +124,8 @@ public class SuggestionIndexTest {
         /*
          * Find that term
          */
+        lock = new CountDownLatch(1);
+
         final List<Suggestion> results = new ArrayList<Suggestion>();
         client.async_findSuggestionsFor("b", 10,
                 new AsyncMethodCallback<List<Suggestion>>() {
@@ -135,13 +137,15 @@ public class SuggestionIndexTest {
                     }
 
                     public void onComplete(List<Suggestion> suggestions) {
-                        Assert.assertNotNull("An Error has occured", results);
+                        Assert.assertNotNull("An Error has occured",
+                                suggestions);
                         results.addAll(suggestions);
+
                         lock.countDown();
                     }
                 });
         Assert.assertTrue("async_findSuggestionsFor has timed out",
-                lock.await(2000, TimeUnit.MILLISECONDS));
+                lock.await(20000, TimeUnit.MILLISECONDS));
 
         /*
          * Check if we find what we've stored
@@ -151,8 +155,10 @@ public class SuggestionIndexTest {
         Assert.assertEquals("payload", results.get(0).payload);
 
         /*
-         * Check if we still find the term after deleting it
+         * Delete The term again
          */
+        lock = new CountDownLatch(1);
+
         client.async_deleteSingleTerm("1", new AsyncMethodCallback<Boolean>() {
 
             public void onError(Exception e) {
@@ -169,6 +175,11 @@ public class SuggestionIndexTest {
 
         Assert.assertTrue("async_deleteSingleTerm has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
+
+        /*
+         * Check if it's deleted
+         */
+        lock = new CountDownLatch(1);
 
         results.clear();
         client.async_findSuggestionsFor("b", 10,

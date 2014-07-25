@@ -182,9 +182,6 @@ public class SuggestionIndex {
             final String payload,
             final int weight,
             final AsyncMethodCallback<Long> listener) throws IOException {
-        client.prepareIndex(index, TYPE, ID)
-                .setSource(generateFieldJS(inputs, output, payload, weight))
-                .setRefresh(true).execute().actionGet();
 
         ListenableActionFuture<IndexResponse> future =
                 client.prepareIndex(index, TYPE, ID)
