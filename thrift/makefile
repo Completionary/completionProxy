@@ -1,3 +1,12 @@
 outDir=../src/main/java/ 
-all:
-	thrift --gen java --out $(outDir) services.thrift
+
+admin:
+	thrift --gen java --out $(outDir) $@.thrift
+analytics:
+	thrift --gen java --out $(outDir) $@.thrift
+streaming:
+	thrift --gen java --out $(outDir) $@.thrift
+suggestion:
+	thrift --gen java --out $(outDir) $@.thrift
+
+all: admin analytics streaming suggestion

@@ -8,8 +8,8 @@ import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
-import de.completionary.proxy.thrift.services.AdminService;
-import de.completionary.proxy.thrift.services.SuggestionField;
+import de.completionary.proxy.thrift.services.admin.AdminService;
+import de.completionary.proxy.thrift.services.suggestion.SuggestionField;
 
 public class AdminHandler implements AdminService.AsyncIface {
 

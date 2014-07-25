@@ -8,7 +8,7 @@ import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 
 import de.completionary.proxy.thrift.handler.AdminHandler;
-import de.completionary.proxy.thrift.services.AdminService;
+import de.completionary.proxy.thrift.services.admin.AdminService;
 
 public class AdminServer {
 

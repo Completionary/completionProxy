@@ -1,8 +1,12 @@
-namespace java de.completionary.proxy.thrift.services
+namespace java de.completionary.proxy.thrift.services.streaming
 
+/*
+ * Including a common.thrift with typedefs only works if you call
+ * the type via common.int -> that's ugly so let's define it here
+ */
 typedef i16 short
 typedef i32 int
-typedef i65 long
+typedef i64 long
 
 /**
  * A Container object to transfer realtime statistics of the last second about one suggest index
@@ -29,30 +33,29 @@ struct StreamedStatisticsField {
 	8: int windowSize;
 }
 /**
-* The StreamingService allows a client to connect to data streams of various 
-* indices and will receive every second an update with statistics about all 
-* requested indices
-**/
+ * The StreamingService allows a client to connect to data streams of various 
+ * indices and will receive every second an update with statistics about all 
+ * requested indices
+ **/
 service StreamingService {
 	/**
 	 * adds current statistics of index to the overall statistics stream
 	 */
-	establishStream(1: string index),
-	
+	void establishStream(1: string index);
+
 	/**
 	 * removes current statistics of index from the overall statistics stream 
 	 */
-	disconnectStream(1: string index),
-
+	void disconnectStream(1: string index);
 
 	/**
 	 * this method pushes a map with stream items of (maybe aggregated statistics) every second to the api client
 	 */
-	map<String, StreamedStatisticField> connectToStatisticStream(),
-	
+	map<string, StreamedStatisticsField> connectToStatisticStream();
+
 	/**
 	 * forces the server not to send statistics to the client anymore
 	 * TODO: discuss if the set of indexes to which the client was connected will be removed (I would suggest to do so)
 	 */
-	disconnectFromStatisticStream(),
+	void disconnectFromStatisticStream();
 }

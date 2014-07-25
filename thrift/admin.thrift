@@ -1,21 +1,13 @@
-namespace java de.completionary.proxy.thrift.services
+namespace java de.completionary.proxy.thrift.services.admin
 
+/*
+ * Including a common.thrift with typedefs only works if you call
+ * the type via common.int -> that's ugly so let's define it here
+ */
 typedef i16 short
 typedef i32 int
 typedef i64 long
 
-/*
- * Data sent back from the suggestion service
- * @param suggestion 
- *			  The suggested string (equals 'output' of SuggestionField)
- * @param payload 
- *			  The additional data stored with the suggested term
- */
-struct Suggestion {
-	1: string suggestion;
-	//will be a JSON and we have to specify supported base format
-	2: string payload;
-}
 
 /**
  * Data used to store new terms in the DB
@@ -44,13 +36,6 @@ struct SuggestionField {
 	4: string payload;
 	// required
 	5: int weight;
-}
-
-service SuggestionService {
-	/**
-	 * Returns the top k completions of <query>
-	 */
-	list<Suggestion> findSuggestionsFor(1: string index, 2: string query, 3: short k),
 }
 
 /**
@@ -84,52 +69,33 @@ service AdminService {
 			3: list<string> inputs,
 			4: string output,
 			5: string payload,
-			6: int weight),
+			6: int weight);
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long addTerms (1: string index, 2: list<SuggestionField> terms),
+	long addTerms (1: string index, 2: list<SuggestionField> terms);
 
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string index, 2: string ID),
+	bool deleteSingleTerm(1: string index, 2: string ID);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string index, 2: list<string> ID),
+	long deleteTerms(1: string index, 2: list<string> ID);
 
 	/**
 	 * Deletes a whole index
 	 */
-	bool deleteIndex(1: string index),
+	bool deleteIndex(1: string index);
 
 	/**
 	 * Clears an Index (deletes all fields)
 	 * @return The time in milliseconds spend on the server side
 	 */
-	long truncateIndex(1: string index),
-}
-/**
- * Serice to retrieve analytics for API customer
- * 
- * 
- * 
- **/
-service AnalyticsService {
-	/**
-	 * retrieves a list of top asked queries (which have been selected from users)
-	 * the weight in the SuggestioField will be the amount of selections
-	 */
-	list<SuggestionField> topQueriesSince(1: int date, 2: short k),
-
-	// I want a function that enables to display the currently asked queries. This should be a polling http request
-
-	// I want a function to display how much traffic has been used
-
-	// I want a function that displays the current payment plan
+	long truncateIndex(1: string index);
 }
