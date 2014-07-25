@@ -36,7 +36,7 @@ mvn exec:java -Dexec.mainClass="de.completionary.proxy.CompletionProxy"
 ```
 
 ## Thrift API
-If you want to communicate with our thrift API, you can execute `make all lang=$language` to generate all files you need for your prefered programming language $language (e.g. js:node, erlang, php, py...) 
+If you want to communicate with our thrift API, you can execute `make all lang=$language` to generate all files you need for your prefered programming language $language (e.g. js:node, erlang, php, py...). This will generate a directory called `gen-$language` with all the API files in your language. Please see the following link for mor information on thrift: https://thrift.apache.org/tutorial/
 
 ### Java
 Here you can find a simple example of how to connect to the admin service:
