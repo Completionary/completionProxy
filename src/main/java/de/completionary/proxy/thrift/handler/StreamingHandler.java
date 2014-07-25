@@ -11,30 +11,26 @@ public class StreamingHandler implements StreamingService.AsyncIface {
     public void
         establishStream(String index, AsyncMethodCallback resultHandler)
                 throws TException {
-        // TODO Auto-generated method stub
-        
+        resultHandler.onComplete(null);
     }
 
     @Override
     public void
         disconnectStream(String index, AsyncMethodCallback resultHandler)
                 throws TException {
-        // TODO Auto-generated method stub
-        
+        resultHandler.onComplete(null);
     }
 
     @Override
     public void connectToStatisticStream(AsyncMethodCallback resultHandler)
             throws TException {
-        // TODO Auto-generated method stub
-        
+        resultHandler.onComplete(null);
     }
 
     @Override
     public void
         disconnectFromStatisticStream(AsyncMethodCallback resultHandler)
                 throws TException {
-        // TODO Auto-generated method stub
-        
+        resultHandler.onComplete(null);
     }
 }

@@ -8,6 +8,7 @@
 
 	<properties>
 		<!-- Main Class for execution -->
+		<mainClass>de.completionary.proxy.CompletionProxy</mainClass>
 		<java.exec.launcherClass>de.completionary.proxy.CompletionProxy</java.exec.launcherClass>
 
 		<!-- version of Maven extension for SCP deployment -->
