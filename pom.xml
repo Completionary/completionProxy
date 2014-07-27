@@ -8,7 +8,6 @@
 
 	<properties>
 		<!-- Main Class for execution -->
-		<mainClass>de.completionary.proxy.CompletionProxy</mainClass>
 		<java.exec.launcherClass>de.completionary.proxy.CompletionProxy</java.exec.launcherClass>
 
 		<!-- version of Maven extension for SCP deployment -->
@@ -73,6 +72,25 @@
 
 	<build>
 		<plugins>
+
+			<!-- Java execution plugin -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+				<version>${java.exec.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>java</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<mainClass>${java.exec.launcherClass}</mainClass>
+				</configuration>
+			</plugin>
+
+
 			<!-- Java 1.7 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
