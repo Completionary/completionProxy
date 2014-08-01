@@ -108,6 +108,6 @@ public class StreamingServerTest {
 
     @Test
     public void test() throws TException {
-        client.establishStream("", "localhost", streamReceiverPort, 5);
+        client.establishStream("", "localhost", streamReceiverPort);
     }
 }

@@ -15,7 +15,7 @@ typedef i64 long
  * Even though we write last second in the documentation this could be an
  * average over a time window. The window size is also transferred.
  * 
- * @param numberOfCcurrentUsers
+ * @param numberOfCurrentUsers
  *            how many unique users have been interacting with the api in
  *            the last second
  * @param numberOfQueries
@@ -31,11 +31,12 @@ typedef i64 long
  *            selected from the autocompletion
  */
 struct StreamedStatisticsField {
-    1: int numberOfCcurrentUsers;
-    2: int numberOfQueries;
-    3: list<string> randomSampleOfCurrentCompletedTerms;
-    4: int numberOfSelectedSuggestions;
-    5: double conversionRate;
+	1: int numberOfCurrentUsers;
+	2: int numberOfQueries;
+	3: list<string> randomSampleOfCurrentCompletedTerms;
+	4: int numberOfSelectedSuggestions;
+	5: double conversionRate;
+	6: int numberOfShownSuggestions
 }
 
 /**
@@ -44,51 +45,48 @@ struct StreamedStatisticsField {
  * requested indices by using the StreamingClientService
  **/
 service StreamingService {
-    /**
-     * Allows a client to register an index for a statistics stream. The server
-     * will connect to hostname:port end send all registered statistics via
-     * updateStatistics every second
-     * 
-     * @param index
-     *            The index to be registered
-     * @param hostName
-     *            The hostname of the machine that should receive the stream
-     * @param port
-     *            The port number of the stream receiver at the client side
-     * @param sampleSize
-     *            Defines how many random queries of the last second should
-     *            be sent
-     */
-    void establishStream(1: string index, 2: string hostName, 3: int port, 4: int sampleSize);
+	/**
+	 * Allows a client to register an index for a statistics stream. The server
+	 * will connect to hostname:port end send all registered statistics via
+	 * updateStatistics every second
+	 * 
+	 * @param index
+	 *            The index to be registered
+	 * @param hostName
+	 *            The hostname of the machine that should receive the stream
+	 * @param port
+	 *            The port number of the stream receiver at the client side
+	 */
+	void establishStream(1: string index, 2: string hostName, 3: int port);
 
-    /**
-     * Allows a client to remove an index from the statistics stream
-     * 
-     * @param index
-     *            The index to be unregistered
-     * @param hostName
-     *            The hostname of the machine that should receive the stream
-     * @param port
-     *            The port number of the stream receiver at the client side
-     */
-    void disconnectStream(1: string index, 2: string hostName, 3: int port);
+	/**
+	 * Allows a client to remove an index from the statistics stream
+	 * 
+	 * @param index
+	 *            The index to be unregistered
+	 * @param hostName
+	 *            The hostname of the machine that should receive the stream
+	 * @param port
+	 *            The port number of the stream receiver at the client side
+	 */
+	void disconnectStream(1: string index, 2: string hostName, 3: int port);
 
-    /**
-     * Forces the server not to send statistics to the client anymore
-     * TODO: discuss if the set of indexes to which the client was connected will be removed (I would suggest to do so)
-     */
-    void disconnectFromStatisticStream();
+	/**
+	 * Forces the server not to send statistics to the client anymore
+	 * TODO: discuss if the set of indexes to which the client was connected will be removed (I would suggest to do so)
+	 */
+	void disconnectFromStatisticStream();
 }
 
 /**
  * This service must be run on the streaming client side to receive statistics streams
  */
 service StreamingClientService {
-    /**
-     * Allows the server to push a map with stream items every second to 
-     * the registered client:
-     * Key: Index
-     * Value: statistics of the last second
-     */
-    oneway void updateStatistics(1: map<string, StreamedStatisticsField> stream);
+	/**
+	 * Allows the server to push a map with stream items every second to 
+	 * the registered client:
+	 * Key: Index
+	 * Value: statistics of the last second
+	 */
+	oneway void updateStatistics(1: map<string, StreamedStatisticsField> stream);
 }

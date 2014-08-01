@@ -35,6 +35,7 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 public class SuggestionIndex {
@@ -44,10 +45,13 @@ public class SuggestionIndex {
      */
     private final String index;
 
-    private static Node node = null;
+    private final StatisticsAggregator statisticsAggregator;
 
-    private static Client client = null;
+    private static Client esClient = null;
 
+    /*
+     * Constants
+     */
     private static final String NAME_FIELD = "name";
 
     private static final String SUGGEST_FIELD = "suggest";
@@ -58,6 +62,13 @@ public class SuggestionIndex {
             new TreeMap<String, SuggestionIndex>();
 
     static {
+        boolean isClient = true;
+
+        final Node node =
+                nodeBuilder().clusterName("completionaryCluster")
+                        .client(isClient).node();
+        esClient = node.client();
+
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
             @Override
@@ -66,53 +77,47 @@ public class SuggestionIndex {
                 node.close();
             }
         });
-
-        boolean isClient = true;
-        node =
-                nodeBuilder().clusterName("completionaryCluster")
-                        .client(isClient).node();
-        client = node.client();
     }
 
     /**
      * Factory methode to create SuggestionIndex objects
      * 
      * @param index
-     * @return
+     *            The ID of the index
+     * @return A new Index or null in case of an error
      */
     public static SuggestionIndex getIndex(final String index) {
         SuggestionIndex instance = indices.get(index);
         if (instance == null) {
-            instance = new SuggestionIndex(index);
+            try {
+                instance = new SuggestionIndex(index);
+            } catch (ExecutionException | InterruptedException | IOException e) {
+                e.printStackTrace();
+                return null;
+            }
             indices.put(index, instance);
         }
         return instance;
     }
 
     private SuggestionIndex(
-            String indexID) {
+            String indexID) throws ExecutionException, InterruptedException,
+            IOException {
         this.index = indexID;
 
         /*
          * Create the ES index if it does not exist yet
          */
-        try {
-            final boolean indexExists =
-                    client.admin().indices()
-                            .exists(new IndicesExistsRequest(index))
-                            .actionGet().isExists();
-            if (!indexExists) {
-                createIndexIfNotExists();
-                addMapping(TYPE);
-
-            }
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        final boolean indexExists =
+                esClient.admin().indices()
+                        .exists(new IndicesExistsRequest(index)).actionGet()
+                        .isExists();
+        if (!indexExists) {
+            createIndexIfNotExists();
+            addMapping(TYPE);
         }
+
+        statisticsAggregator = new StatisticsAggregator();
     }
 
     /**
@@ -130,9 +135,9 @@ public class SuggestionIndex {
             final List<SuggestionField> terms,
             final AsyncMethodCallback<Long> listener) throws IOException {
 
-        BulkRequestBuilder bulkRequest = client.prepareBulk();
+        BulkRequestBuilder bulkRequest = esClient.prepareBulk();
         for (SuggestionField field : terms) {
-            bulkRequest.add(client.prepareIndex(index, TYPE, field.ID)
+            bulkRequest.add(esClient.prepareIndex(index, TYPE, field.ID)
                     .setSource(
                             generateFieldJS(field.input, field.output,
                                     field.payload, field.weight)));
@@ -184,7 +189,7 @@ public class SuggestionIndex {
             final AsyncMethodCallback<Long> listener) throws IOException {
 
         ListenableActionFuture<IndexResponse> future =
-                client.prepareIndex(index, TYPE, ID)
+                esClient.prepareIndex(index, TYPE, ID)
                         .setSource(
                                 generateFieldJS(inputs, output, payload, weight))
                         .setRefresh(true).execute();
@@ -220,7 +225,7 @@ public class SuggestionIndex {
             final AsyncMethodCallback<Boolean> listener) throws IOException {
 
         ListenableActionFuture<DeleteResponse> future =
-                client.prepareDelete(index, TYPE, ID).setRefresh(true)
+                esClient.prepareDelete(index, TYPE, ID).setRefresh(true)
                         .execute();
 
         future.addListener(new ActionListener<DeleteResponse>() {
@@ -251,9 +256,9 @@ public class SuggestionIndex {
             final List<String> IDs,
             final AsyncMethodCallback<Long> listener) throws IOException {
 
-        BulkRequestBuilder bulkRequest = client.prepareBulk();
+        BulkRequestBuilder bulkRequest = esClient.prepareBulk();
         for (String ID : IDs) {
-            bulkRequest.add(client.prepareDelete(index, TYPE, ID));
+            bulkRequest.add(esClient.prepareDelete(index, TYPE, ID));
         }
 
         ListenableActionFuture<BulkResponse> future =
@@ -328,15 +333,17 @@ public class SuggestionIndex {
                         SUGGEST_FIELD).text(suggestRequest);
 
         ListenableActionFuture<SuggestResponse> future =
-                client.prepareSuggest(index).addSuggestion(compBuilder)
+                esClient.prepareSuggest(index).addSuggestion(compBuilder)
                         .execute();
 
         future.addListener(new ActionListener<SuggestResponse>() {
 
             public void onResponse(SuggestResponse response) {
+                List<Suggestion> suggestions =
+                        generateSuggestionsFromESResponse(response, size);
+                statisticsAggregator.onQuery(suggestRequest, suggestions);
 
-                listener.onComplete(generateSuggestionsFromESRespone(response,
-                        size));
+                listener.onComplete(suggestions);
             }
 
             public void onFailure(Throwable e) {
@@ -363,22 +370,30 @@ public class SuggestionIndex {
                         SUGGEST_FIELD).text(suggestRequest);
 
         SuggestRequestBuilder suggestRequestBuilder =
-                client.prepareSuggest(index).addSuggestion(compBuilder);
+                esClient.prepareSuggest(index).addSuggestion(compBuilder);
 
         SuggestResponse response = suggestRequestBuilder.execute().actionGet();
 
-        return generateSuggestionsFromESRespone(response, size);
+        List<Suggestion> suggestions =
+                generateSuggestionsFromESResponse(response, size);
+        statisticsAggregator.onQuery(suggestRequest, suggestions);
+
+        return suggestions;
     }
 
     /**
+     * Splits an ES SuggestResponse into a list of suggestions
      * 
      * @param response
-     * @return
+     *            The response coming from the ES server
+     * @param size
+     *            The number of suggestion string in the response
+     * @return The generated List of suggestion containing all suggestions in
+     *         the given response
      */
-    private List<Suggestion> generateSuggestionsFromESRespone(
+    private List<Suggestion> generateSuggestionsFromESResponse(
             final SuggestResponse response,
             final int size) {
-        List<Suggestion> suggestions = new ArrayList<Suggestion>(size);
 
         CompletionSuggestion compSuggestion =
                 response.getSuggest().getSuggestion(SUGGEST_FIELD);
@@ -395,13 +410,17 @@ public class SuggestionIndex {
                 /*
                  * Loop through all suggestions
                  */
+                List<Suggestion> suggestions =
+                        new ArrayList<Suggestion>(options.size());
+
                 for (CompletionSuggestion.Entry.Option option : options) {
                     suggestions.add(new Suggestion(option.getText().toString(),
                             option.getPayloadAsString()));
                 }
+                return suggestions;
             }
         }
-        return suggestions;
+        return new ArrayList<Suggestion>(0);
     }
 
     /**
@@ -430,7 +449,7 @@ public class SuggestionIndex {
                         .field("payloads", true).endObject().endObject()
                         .endObject().endObject();
 
-        client.admin().indices().preparePutMapping(index).setType(type)
+        esClient.admin().indices().preparePutMapping(index).setType(type)
                 .setSource(js).get();
     }
 
@@ -450,8 +469,8 @@ public class SuggestionIndex {
                         .endObject().endObject();
 
         ListenableActionFuture<PutMappingResponse> future =
-                client.admin().indices().preparePutMapping(index).setType(type)
-                        .setSource(js).execute();
+                esClient.admin().indices().preparePutMapping(index)
+                        .setType(type).setSource(js).execute();
 
         future.addListener(new ActionListener<PutMappingResponse>() {
 
@@ -479,7 +498,7 @@ public class SuggestionIndex {
             InterruptedException {
         try {
             CreateIndexResponse response =
-                    client.admin().indices()
+                    esClient.admin().indices()
                             .create(new CreateIndexRequest(index)).get();
 
             if (!response.isAcknowledged()) {
@@ -506,7 +525,7 @@ public class SuggestionIndex {
         final DeleteIndexRequest deleteIndexRequest =
                 new DeleteIndexRequest(index);
         try {
-            client.admin().indices().delete(deleteIndexRequest).get();
+            esClient.admin().indices().delete(deleteIndexRequest).get();
         } catch (ExecutionException e) {
             // Ignore IndexMissingException
             if (!((e.getCause().getCause()) instanceof IndexMissingException)) {
@@ -525,7 +544,7 @@ public class SuggestionIndex {
      */
     public void truncate() throws InterruptedException, ExecutionException,
             IOException {
-        client.admin().indices().prepareDeleteMapping(index).setType(TYPE)
+        esClient.admin().indices().prepareDeleteMapping(index).setType(TYPE)
                 .execute().actionGet();
         waitForYellow();
         addMapping(TYPE);
@@ -547,7 +566,7 @@ public class SuggestionIndex {
         final long start = System.currentTimeMillis();
 
         ListenableActionFuture<DeleteMappingResponse> future =
-                client.admin().indices().prepareDeleteMapping(index)
+                esClient.admin().indices().prepareDeleteMapping(index)
                         .setType(TYPE).execute();
 
         /*
@@ -612,7 +631,7 @@ public class SuggestionIndex {
      */
     public void async_waitForYellow(final AsyncMethodCallback<Object> listener) {
         ListenableActionFuture<ClusterHealthResponse> future =
-                client.admin().cluster().prepareHealth().setIndices(index)
+                esClient.admin().cluster().prepareHealth().setIndices(index)
                         .setWaitForYellowStatus().execute();
 
         future.addListener(new ActionListener<ClusterHealthResponse>() {
@@ -625,21 +644,28 @@ public class SuggestionIndex {
                 listener.onError(new Exception(e.getMessage()));
             }
         });
-
+    }
+    
+    /**
+     * Returns the statistics aggregated since last call of this method
+     * @return
+     */
+    public StreamedStatisticsField getCurrentStatistics(){
+        return statisticsAggregator.getCurrentStatistics();
     }
 
     public void waitForYellow() {
-        client.admin().cluster().prepareHealth().setIndices(index).execute()
+        esClient.admin().cluster().prepareHealth().setIndices(index).execute()
                 .actionGet();
     }
 
     public void waitForGreen() {
-        client.admin().cluster().prepareHealth().setIndices(index)
+        esClient.admin().cluster().prepareHealth().setIndices(index)
                 .setWaitForGreenStatus().execute().actionGet();
     }
 
     private void expungeDeletes() {
-        client.admin().indices().prepareOptimize(index)
+        esClient.admin().indices().prepareOptimize(index)
                 .setOnlyExpungeDeletes(true).setWaitForMerge(true).execute()
                 .actionGet();
     }

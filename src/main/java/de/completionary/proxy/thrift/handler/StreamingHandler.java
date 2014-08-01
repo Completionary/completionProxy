@@ -20,11 +20,9 @@ public class StreamingHandler implements StreamingService.AsyncIface {
             String index,
             String hostName,
             int port,
-            int sampleSize,
             AsyncMethodCallback resultHandler) throws TException {
 
-        dispatcher.registerClient(index, hostName, port, sampleSize,
-                resultHandler);
+        dispatcher.registerClient(index, hostName, port, resultHandler);
     }
 
     @Override

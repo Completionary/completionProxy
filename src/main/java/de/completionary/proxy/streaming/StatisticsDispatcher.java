@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -15,7 +16,9 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
-import de.completionary.proxy.thrift.services.streaming.StreamingService;
+import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
+import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
 
 public class StatisticsDispatcher extends TimerTask {
 
@@ -24,11 +27,11 @@ public class StatisticsDispatcher extends TimerTask {
      */
     private static final int SendingDelay = 1000;
 
-    private final Map<StreamingService.Client, Set<IndexAndSampleSize>> clientsAndIndices =
-            new HashMap<StreamingService.Client, Set<IndexAndSampleSize>>();
+    private final Map<StreamingClientService.Client, Set<String>> indicesByClient =
+            new HashMap<StreamingClientService.Client, Set<String>>();
 
-    private final Map<String, StreamingService.Client> clientsByHostAndPort =
-            new HashMap<String, StreamingService.Client>();
+    private final Map<String, StreamingClientService.Client> clientsByHostAndPort =
+            new HashMap<String, StreamingClientService.Client>();
 
     public StatisticsDispatcher() {
         Timer timer = new Timer();
@@ -46,8 +49,6 @@ public class StatisticsDispatcher extends TimerTask {
      * @param port
      *            Port number at which the StreamingServer at the client side is
      *            listening to
-     * @param sampleSize
-     *            Number of random sample queries within the statistics stream
      * @param resultHandler
      *            Callback to be called as soon as the client is registered
      */
@@ -55,7 +56,6 @@ public class StatisticsDispatcher extends TimerTask {
             String index,
             String hostName,
             int port,
-            int sampleSize,
             AsyncMethodCallback<Void> resultHandler) {
         System.out.println("Connecting to streaming client " + hostName + ":"
                 + port);
@@ -64,11 +64,11 @@ public class StatisticsDispatcher extends TimerTask {
          */
         final String hostAndPortKey = hostName + port;
 
-        StreamingService.Client client =
+        StreamingClientService.Client client =
                 clientsByHostAndPort.get(hostAndPortKey);
 
         if (client != null) {
-            registerIndex(client, index, sampleSize);
+            registerIndex(client, index);
             resultHandler.onComplete(null);
             return;
         }
@@ -80,12 +80,12 @@ public class StatisticsDispatcher extends TimerTask {
                 new TFramedTransport(new TSocket(hostName, port));
         TProtocol protocol = new TCompactProtocol(transport);
 
-        client = new StreamingService.Client(protocol);
+        client = new StreamingClientService.Client(protocol);
         for (int i = 0; i < 3; i++) {
             try {
                 transport.open();
                 clientsByHostAndPort.put(hostAndPortKey, client);
-                registerIndex(client, index, sampleSize);
+                registerIndex(client, index);
                 resultHandler.onComplete(null);
                 return;
             } catch (TTransportException e) {
@@ -106,33 +106,66 @@ public class StatisticsDispatcher extends TimerTask {
     }
 
     /**
-     * Registers a client with index and sampleSize
+     * Registers a client with an index
      * 
      * @param client
      *            The client the statistics stream should be sent to
      * @param index
      *            Index of the statistics to be sent
-     * @param sampleSize
-     *            Number of random sample queries within the statistics stream
      */
     private void registerIndex(
-            StreamingService.Client client,
-            String index,
-            int sampleSize) {
+            StreamingClientService.Client client,
+            String index) {
 
-        Set<IndexAndSampleSize> indices = clientsAndIndices.get(client);
+        Set<String> indices = indicesByClient.get(client);
         if (indices == null) {
-            indices = new HashSet<IndexAndSampleSize>();
-            clientsAndIndices.put(client, indices);
+            indices = new HashSet<String>();
+            indicesByClient.put(client, indices);
         }
-        indices.add(new IndexAndSampleSize(index, sampleSize));
+        indices.add(index);
     }
 
     /**
-     * The thread sends the statistics to all clients every second
+     * This method is called every second to send all the new statistics to all
+     * clients
      */
     @Override
     public void run() {
-        System.out.println("now!");
+        /*
+         * Iterate through all connected clients
+         */
+        for (Map.Entry<StreamingClientService.Client, Set<String>> entry : indicesByClient
+                .entrySet()) {
+            StreamingClientService.Client client = entry.getKey();
+            Set<String> indeces = entry.getValue();
+
+            Map<String, StreamedStatisticsField> streamForClient =
+                    new HashMap<String, StreamedStatisticsField>();
+
+            Map<String, StreamedStatisticsField> retrievedStats =
+                    new HashMap<String, StreamedStatisticsField>();
+            /*
+             * Fill the stream with all index related data
+             */
+            for (String index : indeces) {
+                StreamedStatisticsField field = retrievedStats.get(index);
+                if (field == null) {
+                    field =
+                            SuggestionIndex.getIndex(index)
+                                    .getCurrentStatistics();
+                    retrievedStats.put(index, field);
+                }
+                streamForClient.put(index, field);
+            }
+
+            /*
+             * Send the stream to the client
+             */
+            try {
+                client.updateStatistics(streamForClient);
+            } catch (TException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
