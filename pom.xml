@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>de.completionary.proxy</groupId>
 	<artifactId>proxy</artifactId>
-	<version>0.0.1</version>
+	<version>0.1.0</version>
 	<name>Completionary Proxy</name>
 
 	<properties>
@@ -13,7 +13,7 @@
 		<!-- version of Maven extension for SCP deployment -->
 		<maven.ssh-extension.version>2.6</maven.ssh-extension.version>
 		<junit.version>4.9</junit.version>
-		<elasticsearch.version>1.2.2</elasticsearch.version>
+		<elasticsearch.version>1.3.1</elasticsearch.version>
 
 		<!-- version of Java compiler plugin -->
 		<java.compiler-plugin.version>3.1</java.compiler-plugin.version>
@@ -89,7 +89,6 @@
 					<mainClass>${java.exec.launcherClass}</mainClass>
 				</configuration>
 			</plugin>
-
 
 			<!-- Java 1.7 -->
 			<plugin>

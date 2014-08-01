@@ -20,7 +20,6 @@ typedef i64 long
  * @param numberOfSelectedSuggestions: absolute number of how many terms have been selected in the last second 
  * @param conversionRate: relative number of search sessions in which a term has been selected from the autocompletion
  * @param numberOfTotalQueriesThisMonth: number of total queries used in this month. (this is never averaged)
- * @param windowSize: the windowsize in milliseconds from which the statistics are averaged.
  */
 struct StreamedStatisticsField {
 	1: int numberOfCcurrentUsers;
@@ -30,7 +29,6 @@ struct StreamedStatisticsField {
 	5: int numberOfSelectedSuggestions;
 	6: double conversionRate;
 	7: int numberOfTotalQueriesThisMonth;
-	8: int windowSize;
 }
 /**
  * The StreamingService allows a client to connect to data streams of various 
