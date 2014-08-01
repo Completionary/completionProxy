@@ -4,9 +4,10 @@ completionProxy
 Proxy implementing an interface to the suggestion index (elastic search) and the analytics backend.
 
 # Dependencies
+## Thrift
 To make this code compilable you have to generate the thrift files. To install the thrift compiler please see the following links:
 
-## Debian Wheezy/Ubuntu
+### Debian Wheezy/Ubuntu
 ```bash
 sudo apt-get install git build-essential cmake pkg-config libboost-dev libboost-test-dev \
 libboost-program-options-dev libevent-dev automake libtool flex bison pkg-config \
@@ -23,7 +24,7 @@ make -j
 sudo make install
 ```
 
-## Archlinux
+### Archlinux
 ```bash
 wget https://aur.archlinux.org/packages/th/thrift/thrift.tar.gz
 tar -xvzf thrift.tar.gz
@@ -31,6 +32,31 @@ cd thrift
 makepkg -s
 sudo pacman -U thrift*.tar.xz
 ```
+
+## Elasticsearch
+The backend databse used is elastic search (For the version please see [[elasticsearch.version here|https://github.com/Completionary/completionProxy/blob/develop/pom.xml]]).
+
+The installation is as simple as following:
+```bash
+esVersion=1.3.1
+wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-${esVersion}.tar.gz
+tar -xvzf elasticsearch-${esVersion}.tar.gz
+cd elasticsearch-${esVersion}
+
+cp $pathToCompletionProxy/config/* config/
+```
+To run elasticsearch just execute the script file in bin:
+```bash
+bin/elasticsearch
+```
+
+### Head plugin
+A relative simple plugin vor ES to view the stored data is elasticsearch-head:
+```bash
+bin/plugin -install mobz/elasticsearch-head
+```
+This activate following fiew: [[http://localhost:9200/_plugin/head/]]
+
 
 # Installation and running
 ```bash
