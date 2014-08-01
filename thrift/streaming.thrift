@@ -1,5 +1,7 @@
 namespace java de.completionary.proxy.thrift.services.streaming
 
+include "exceptions.thrift"
+
 /*
  * Including a common.thrift with typedefs only works if you call
  * the type via common.int -> that's ugly so let's define it here
@@ -57,7 +59,7 @@ service StreamingService {
 	 * @param port
 	 *            The port number of the stream receiver at the client side
 	 */
-	void establishStream(1: string index, 2: string hostName, 3: int port);
+	void establishStream(1: string index, 2: string hostName, 3: int port) throws (1: exceptions.IndexUnknownException indexUnkown);
 
 	/**
 	 * Allows a client to remove an index from the statistics stream

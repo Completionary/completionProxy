@@ -17,6 +17,7 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
 
@@ -59,6 +60,16 @@ public class StatisticsDispatcher extends TimerTask {
             AsyncMethodCallback<Void> resultHandler) {
         System.out.println("Connecting to streaming client " + hostName + ":"
                 + port);
+
+        if (!SuggestionIndex.indexExists(index)) {
+            resultHandler
+                    .onError(new IndexUnknownException(
+                            "You tried to register for a statistics stream of index '"
+                                    + index
+                                    + "' even thought this index is not stored in our database"));
+            return;
+        }
+
         /*
          * Check if we already know the client
          */
@@ -120,6 +131,7 @@ public class StatisticsDispatcher extends TimerTask {
         Set<String> indices = indicesByClient.get(client);
         if (indices == null) {
             indices = new HashSet<String>();
+            indices.add(index);
             indicesByClient.put(client, indices);
         }
         indices.add(index);

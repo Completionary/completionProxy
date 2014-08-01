@@ -88,7 +88,11 @@ public class SuggestionIndex {
      */
     public static SuggestionIndex getIndex(final String index) {
         SuggestionIndex instance = indices.get(index);
-        if (instance == null) {
+        if (instance != null) {
+            return instance;
+        }
+
+        synchronized (esClient) {
             try {
                 instance = new SuggestionIndex(index);
             } catch (ExecutionException | InterruptedException | IOException e) {
@@ -108,16 +112,24 @@ public class SuggestionIndex {
         /*
          * Create the ES index if it does not exist yet
          */
-        final boolean indexExists =
-                esClient.admin().indices()
-                        .exists(new IndicesExistsRequest(index)).actionGet()
-                        .isExists();
+        final boolean indexExists = indexExists(indexID);
+
         if (!indexExists) {
             createIndexIfNotExists();
             addMapping(TYPE);
         }
 
         statisticsAggregator = new StatisticsAggregator();
+    }
+
+    /**
+     * Find out if the index already exists in the ES database
+     * @param index
+     * @return
+     */
+    public static boolean indexExists(final String index) {
+        return esClient.admin().indices()
+                .exists(new IndicesExistsRequest(index)).actionGet().isExists();
     }
 
     /**
@@ -341,9 +353,9 @@ public class SuggestionIndex {
             public void onResponse(SuggestResponse response) {
                 List<Suggestion> suggestions =
                         generateSuggestionsFromESResponse(response, size);
-                statisticsAggregator.onQuery(suggestRequest, suggestions);
-
                 listener.onComplete(suggestions);
+
+                statisticsAggregator.onQuery(suggestRequest, suggestions);
             }
 
             public void onFailure(Throwable e) {
@@ -645,12 +657,13 @@ public class SuggestionIndex {
             }
         });
     }
-    
+
     /**
      * Returns the statistics aggregated since last call of this method
+     * 
      * @return
      */
-    public StreamedStatisticsField getCurrentStatistics(){
+    public StreamedStatisticsField getCurrentStatistics() {
         return statisticsAggregator.getCurrentStatistics();
     }
 

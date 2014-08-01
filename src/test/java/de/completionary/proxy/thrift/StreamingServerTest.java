@@ -21,6 +21,7 @@ import org.junit.Test;
 import de.completionary.proxy.CompletionProxy;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.helper.ProxyOptions;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
 import de.completionary.proxy.thrift.services.streaming.StreamingService;
 
@@ -107,7 +108,16 @@ public class StreamingServerTest {
     }
 
     @Test
-    public void test() throws TException {
-        client.establishStream("", "localhost", streamReceiverPort);
+    public void test() throws  
+            InterruptedException {
+        try {
+            client.establishStream("", "localhost", streamReceiverPort);
+        } catch (IndexUnknownException e) {
+            e.printStackTrace();
+        } catch (TException e) {
+            e.printStackTrace();
+        }
+
+        Thread.sleep(10000);
     }
 }

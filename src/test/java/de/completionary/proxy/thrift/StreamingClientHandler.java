@@ -15,7 +15,11 @@ public class StreamingClientHandler implements
     public void updateStatistics(
             Map<String, StreamedStatisticsField> stream,
             AsyncMethodCallback resultHandler) throws TException {
-        // TODO Auto-generated method stub
-
+        System.out.println("Received stream:");
+        for (Map.Entry<String, StreamedStatisticsField> entry : stream
+                .entrySet()) {
+            System.out.println(entry.getKey() + "\t"
+                    + entry.getValue().numberOfQueries);
+        }
     }
 }

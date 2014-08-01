@@ -38,6 +38,14 @@ class StatisticsAggregator {
     public StatisticsAggregator() {
     }
 
+    /**
+     * Must be called every time a suggestion query was run
+     * 
+     * @param suggestRequest
+     *            The string that was completed
+     * @param suggestions
+     *            The list of suggestions that was sent back to the client
+     */
     public void onQuery(
             final String suggestRequest,
             final List<Suggestion> suggestions) {

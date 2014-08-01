@@ -13,6 +13,7 @@ endif
 pre-build:
 	echo "The main out-directory is $(outDir)"
 	mkdir -p $(outDir)
+	thrift --gen $(lang) --out $(outDir) exceptions.thrift
 
 admin: pre-build
 	thrift --gen $(lang) --out $(outDir) $@.thrift
