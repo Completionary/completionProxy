@@ -64,6 +64,9 @@ git clone git@github.com:Completionary/completionProxy.git
 cd completionProxy/thrift
 make all lang=java
 cd ..
+sudo mkdir /etc/completionary
+sudo cp proxyOptions.cfg /etc/completionary
+
 mvn exec:java -Dexec.mainClass="de.completionary.proxy.CompletionProxy"
 ```
 
