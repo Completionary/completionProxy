@@ -34,7 +34,7 @@ sudo pacman -U thrift*.tar.xz
 ```
 
 ## Elasticsearch
-The backend databse used is elastic search (For the version please see [[elasticsearch.version here|https://github.com/Completionary/completionProxy/blob/develop/pom.xml]]).
+The backend databse used is elastic search (For the version please see [elasticsearch.version here](https://github.com/Completionary/completionProxy/blob/develop/pom.xml)).
 
 The installation is as simple as following:
 ```bash
@@ -55,7 +55,7 @@ A relative simple plugin vor ES to view the stored data is elasticsearch-head:
 ```bash
 bin/plugin -install mobz/elasticsearch-head
 ```
-This activate following fiew: [[http://localhost:9200/_plugin/head/]]
+This activate following fiew: [http://localhost:9200/_plugin/head/](http://localhost:9200/_plugin/head/)
 
 
 # Installation and running
