@@ -5,7 +5,11 @@ import java.util.Random;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.server.TNonblockingServer;
+import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -25,10 +29,15 @@ public class StreamingServerTest {
 
     private StreamingService.Client client;
 
+    private StreamingClientHandler clientHandler;
+
     private static final int streamReceiverPort = 6538;
 
     @BeforeClass
     public static void setUpBeforeClass() {
+        /*
+         * Start the streaming server
+         */
         new Thread(new Runnable() {
 
             @Override
@@ -40,6 +49,9 @@ public class StreamingServerTest {
 
     @Before
     public void setUp() throws Exception {
+        /*
+         * Connect to the server
+         */
         Random r = new Random();
         index = "testindex" + r.nextInt();
 
@@ -61,6 +73,31 @@ public class StreamingServerTest {
                 }
             }
         }
+
+        /*
+         * Start the streaming client receiver
+         */
+        try {
+            TNonblockingServerTransport trans =
+                    new TNonblockingServerSocket(streamReceiverPort);
+            TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
+            args.transportFactory(new TFramedTransport.Factory());
+            args.protocolFactory(new TCompactProtocol.Factory());
+            clientHandler = new StreamingClientHandler();
+            args.processor(new StreamingService.AsyncProcessor<StreamingService.AsyncIface>(
+                    clientHandler));
+            final TServer server = new TNonblockingServer(args);
+            (new Thread() {
+
+                @Override
+                public void run() {
+                    server.serve();
+                }
+            }).start();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @After
@@ -70,6 +107,6 @@ public class StreamingServerTest {
 
     @Test
     public void test() throws TException {
-        client.establishStream("", "localhost", streamReceiverPort);
+        client.establishStream("", "localhost", streamReceiverPort, 5);
     }
 }

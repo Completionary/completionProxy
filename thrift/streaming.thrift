@@ -23,28 +23,21 @@ typedef i64 long
  *            last second
  * @param randomSampleOfCurrentCompletedTerms
  *            : A random sample of successfully completed terms
- * @param indexSize
- *            : number of items that are currently stored in the index (this
- *            is never averaged)
  * @param numberOfSelectedSuggestions
  *            : absolute number of how many terms have been selected in the
  *            last second
  * @param conversionRate
  *            : relative number of search sessions in which a term has been
  *            selected from the autocompletion
- * @param numberOfTotalQueriesThisMonth
- *            : number of total queries used in this month. (this is never
- *            averaged)
  */
 struct StreamedStatisticsField {
 	1: int numberOfCcurrentUsers;
 	2: int numberOfQueries;
 	3: list<string> randomSampleOfCurrentCompletedTerms;
-	4: int indexSize;
-	5: int numberOfSelectedSuggestions;
-	6: double conversionRate;
-	7: int numberOfTotalQueriesThisMonth;
+	4: int numberOfSelectedSuggestions;
+	5: double conversionRate;
 }
+
 /**
  * The StreamingService allows a client to connect to data streams of various 
  * indices and will receive every second an update with statistics about all 
@@ -62,8 +55,11 @@ service StreamingService {
 	 *            The hostname of the machine that should receive the stream
 	 * @param port
 	 *            The port number of the stream receiver at the client side
+	 * @param sampleSize
+	 * 			  Defines how many random queries of the last second should
+	 * 			  be sent
 	 */
-	void establishStream(1: string index, 2: string hostName, 3: int port);
+	void establishStream(1: string index, 2: string hostName, 3: int port, 4: int sampleSize);
 
 	/**
 	 * Allows a client to remove an index from the statistics stream
@@ -79,7 +75,9 @@ service StreamingService {
 
 	/**
 	 * Allows the server to push a map with stream items every second to 
-	 * the registered client
+	 * the registered client:
+	 * Key: Index
+	 * Value: statistics of the last second
 	 */
 	oneway void updateStatistics(1: map<string, StreamedStatisticsField> stream);
 

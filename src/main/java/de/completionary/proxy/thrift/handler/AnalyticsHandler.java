@@ -24,4 +24,19 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
                 }), "payload", 1));
         resultHandler.onComplete(l);
     }
+
+    @Override
+    public void getNumberOfTotalQueriesThisMonth(
+            String index,
+            AsyncMethodCallback resultHandler) throws TException {
+        // TODO Auto-generated method stub
+        
+    }
+
+    @Override
+    public void getIndexSize(String index, AsyncMethodCallback resultHandler)
+            throws TException {
+        // TODO Auto-generated method stub
+        
+    }
 }

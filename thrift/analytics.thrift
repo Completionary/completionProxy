@@ -28,4 +28,14 @@ service AnalyticsService {
 	// I want a function to display how much traffic has been used
 
 	// I want a function that displays the current payment plan
+
+	/**
+	 * Returns the number of total queries inquired this month
+	 */
+	long getNumberOfTotalQueriesThisMonth(1: string index);
+
+	/**
+	 *  Returns the number of items that are currently stored in the index 
+	 */
+	int getIndexSize(1: string index);
 }
