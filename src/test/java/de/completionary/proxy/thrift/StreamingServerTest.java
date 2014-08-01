@@ -21,6 +21,7 @@ import org.junit.Test;
 import de.completionary.proxy.CompletionProxy;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.helper.ProxyOptions;
+import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
 import de.completionary.proxy.thrift.services.streaming.StreamingService;
 
 public class StreamingServerTest {
@@ -84,7 +85,7 @@ public class StreamingServerTest {
             args.transportFactory(new TFramedTransport.Factory());
             args.protocolFactory(new TCompactProtocol.Factory());
             clientHandler = new StreamingClientHandler();
-            args.processor(new StreamingService.AsyncProcessor<StreamingService.AsyncIface>(
+            args.processor(new StreamingClientService.AsyncProcessor<StreamingClientService.AsyncIface>(
                     clientHandler));
             final TServer server = new TNonblockingServer(args);
             (new Thread() {
