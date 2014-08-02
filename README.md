@@ -33,6 +33,12 @@ makepkg -s
 sudo pacman -U thrift*.tar.xz
 ```
 
+### Mac OSX
+Using homebrew
+```bash
+brew install thrift
+```
+
 ## Elasticsearch
 The backend databse used is elastic search (For the version please see [elasticsearch.version here](https://github.com/Completionary/completionProxy/blob/develop/pom.xml)).
 
@@ -48,6 +54,13 @@ cp $pathToCompletionProxy/config/* config/
 To run elasticsearch just execute the script file in bin:
 ```bash
 bin/elasticsearch
+```
+
+### Mac OSX
+Using homebrew
+```bash
+brew install elasticsearch
+cp $pathToCompletionProxy/config/* /usr/local/Cellar/elasticsearch/config/
 ```
 
 ### Head plugin
@@ -67,6 +80,7 @@ cd ..
 sudo mkdir /etc/completionary
 sudo cp proxyOptions.cfg /etc/completionary
 
+mvn compile
 mvn exec:java -Dexec.mainClass="de.completionary.proxy.CompletionProxy"
 ```
 
