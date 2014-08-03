@@ -175,13 +175,29 @@ public class StatisticsDispatcher extends TimerTask {
 			StreamingClientServiceClient client) {
 		System.out.println("Disconnecting from streaming client "
 				+ client.hostname + ":" + client.port);
-		/*
-		 * Check if we already know the client
-		 */
 		if (client != null) {
 			indicesByClient.remove(client);
+			clientsByHostAndPort.remove(client.hostname + client.port);
 		}
-		clientsByHostAndPort.remove(client.hostname + client.port);
+	}
+
+	/**
+	 * Disconnects all streams to the given client
+	 * 
+	 * @param client
+	 *            The client which is to be disconnected
+	 */
+	public synchronized void disconnectClient(String hostName, int port,
+			AsyncMethodCallback resultHandler) {
+		final String hostAndPortKey = hostName + port;
+
+		StreamingClientServiceClient client = clientsByHostAndPort
+				.get(hostAndPortKey);
+		if (client != null) {
+			indicesByClient.remove(client);
+			clientsByHostAndPort.remove(client.hostname + client.port);
+		}
+		resultHandler.onComplete(null);
 	}
 
 	/**

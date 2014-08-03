@@ -82,7 +82,7 @@ service StreamingService {
 	 * Forces the server not to send statistics to the client anymore
 	 * TODO: discuss if the set of indexes to which the client was connected will be removed (I would suggest to do so)
 	 */
-	void disconnectFromStatisticStream();
+	void disconnectFromStatisticStream(1: string hostName, 2: int port);
 }
 
 /**
