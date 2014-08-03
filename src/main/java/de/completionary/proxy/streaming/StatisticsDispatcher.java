@@ -16,10 +16,10 @@ import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 
+import StreamingClientService.StreamingClientServiceClient;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
-import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
 import de.completionary.proxy.thrift.services.streaming.UnableToConnectToStreamingClientException;
 
 public class StatisticsDispatcher extends TimerTask {
@@ -29,9 +29,9 @@ public class StatisticsDispatcher extends TimerTask {
 	 */
 	private static final int SendingDelay = 1000;
 
-	private final Map<StreamingClientService.Client, Set<String>> indicesByClient = new HashMap<StreamingClientService.Client, Set<String>>();
+	private final Map<StreamingClientServiceClient, Set<String>> indicesByClient = new HashMap<StreamingClientServiceClient, Set<String>>();
 
-	private final Map<String, StreamingClientService.Client> clientsByHostAndPort = new HashMap<String, StreamingClientService.Client>();
+	private final Map<String, StreamingClientServiceClient> clientsByHostAndPort = new HashMap<String, StreamingClientServiceClient>();
 
 	public StatisticsDispatcher() {
 		Timer timer = new Timer();
@@ -71,7 +71,7 @@ public class StatisticsDispatcher extends TimerTask {
 		 */
 		final String hostAndPortKey = hostName + port;
 
-		StreamingClientService.Client client = clientsByHostAndPort
+		StreamingClientServiceClient client = clientsByHostAndPort
 				.get(hostAndPortKey);
 
 		if (client != null) {
@@ -86,7 +86,7 @@ public class StatisticsDispatcher extends TimerTask {
 		TTransport transport = new TFramedTransport(new TSocket(hostName, port));
 		TProtocol protocol = new TBinaryProtocol(transport);
 
-		client = new StreamingClientService.Client(protocol);
+		client = new StreamingClientServiceClient(protocol, hostName, port);
 		for (int i = 0; i < 3; i++) {
 			try {
 				transport.open();
@@ -119,8 +119,7 @@ public class StatisticsDispatcher extends TimerTask {
 	 * @param index
 	 *            Index of the statistics to be sent
 	 */
-	private void registerIndex(StreamingClientService.Client client,
-			String index) {
+	private void registerIndex(StreamingClientServiceClient client, String index) {
 
 		Set<String> indices = indicesByClient.get(client);
 		if (indices == null) {
@@ -132,18 +131,73 @@ public class StatisticsDispatcher extends TimerTask {
 	}
 
 	/**
+	 * Unregisters a client from receiving a statistics stream
+	 * 
+	 * @param index
+	 *            Index of the statistics of the stream
+	 * @param hostName
+	 *            Hostname of the client
+	 * @param port
+	 *            Port number at which the StreamingServer at the client side is
+	 *            listening to
+	 * @param resultHandler
+	 *            Callback to be called as soon as the client is unregistered
+	 */
+	public synchronized void unregisterIndex(String index, String hostName,
+			int port, AsyncMethodCallback<Void> resultHandler) {
+		/*
+		 * Check if we already know the client
+		 */
+		final String hostAndPortKey = hostName + port;
+
+		StreamingClientServiceClient client = clientsByHostAndPort
+				.get(hostAndPortKey);
+
+		if (client != null) {
+			Set<String> indices = indicesByClient.get(client);
+			indices.remove(index);
+
+			if (indices.isEmpty()) {
+				clientsByHostAndPort.remove(hostAndPortKey);
+				client = null;
+			}
+		}
+		resultHandler.onComplete(null);
+	}
+
+	/**
+	 * Disconnects all streams to the given client
+	 * 
+	 * @param client
+	 *            The client which is to be disconnected
+	 */
+	public synchronized void disconnectClient(
+			StreamingClientServiceClient client) {
+		System.out.println("Disconnecting from streaming client "
+				+ client.hostname + ":" + client.port);
+		/*
+		 * Check if we already know the client
+		 */
+		if (client != null) {
+			indicesByClient.remove(client);
+		}
+		clientsByHostAndPort.remove(client.hostname + client.port);
+	}
+
+	/**
 	 * This method is called every second to send all the new statistics to all
 	 * clients
 	 */
 	@Override
 	public void run() {
-		System.out.println("Sending statistics");
+		System.out.println("Sending statistics to " + indicesByClient.size()
+				+ " clients");
 		/*
 		 * Iterate through all connected clients
 		 */
-		for (Map.Entry<StreamingClientService.Client, Set<String>> entry : indicesByClient
+		for (Map.Entry<StreamingClientServiceClient, Set<String>> entry : indicesByClient
 				.entrySet()) {
-			StreamingClientService.Client client = entry.getKey();
+			StreamingClientServiceClient client = entry.getKey();
 			Set<String> indeces = entry.getValue();
 
 			Map<String, StreamedStatisticsField> streamForClient = new HashMap<String, StreamedStatisticsField>();
@@ -167,6 +221,8 @@ public class StatisticsDispatcher extends TimerTask {
 			 */
 			try {
 				client.updateStatistics(streamForClient);
+			} catch (TTransportException te) {
+				disconnectClient(client);
 			} catch (TException e) {
 				e.printStackTrace();
 			}

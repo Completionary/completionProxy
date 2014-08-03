@@ -33,6 +33,8 @@ public class StreamingServerTest {
 
 	private StreamingClientHandler clientHandler;
 
+	private TServer streamingClientServer;
+
 	private static final int streamReceiverPort = 6538;
 
 	@BeforeClass
@@ -67,7 +69,8 @@ public class StreamingServerTest {
 				transport.open();
 				break;
 			} catch (TTransportException e) {
-				System.err.println("Unable to connect to StreamingService. Retrying...");
+				System.err
+						.println("Unable to connect to StreamingService. Retrying...");
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e1) {
@@ -96,6 +99,8 @@ public class StreamingServerTest {
 					server.serve();
 				}
 			}).start();
+			
+			streamingClientServer = server;
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -110,12 +115,16 @@ public class StreamingServerTest {
 	@Test
 	public void test() throws InterruptedException {
 		try {
-			client.establishStream("wikipediaindex", "localhost", streamReceiverPort);
+			client.establishStream("wikipediaindex", "localhost",
+					streamReceiverPort);
 		} catch (IndexUnknownException e) {
 			e.printStackTrace();
 		} catch (TException e) {
 			e.printStackTrace();
 		}
+		Thread.sleep(3000);
+		System.out.println("Killing client server");
+		streamingClientServer.stop();
 
 		Thread.sleep(100000);
 	}
