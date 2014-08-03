@@ -1,6 +1,6 @@
 package de.completionary.proxy.thrift.server;
 
-import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.transport.TFramedTransport;
@@ -21,7 +21,7 @@ public class AnalyticsServer extends Thread {
                             ProxyOptions.ANALYTICS_SERVER_PORT);
             TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
             args.transportFactory(new TFramedTransport.Factory());
-            args.protocolFactory(new TCompactProtocol.Factory());
+            args.protocolFactory(new TBinaryProtocol.Factory());
             args.processor(new AnalyticsService.AsyncProcessor<AnalyticsService.AsyncIface>(
                     new AnalyticsHandler()));
             TServer server = new TNonblockingServer(args);

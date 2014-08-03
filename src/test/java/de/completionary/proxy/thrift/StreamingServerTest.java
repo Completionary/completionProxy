@@ -3,7 +3,7 @@ package de.completionary.proxy.thrift;
 import java.util.Random;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.TNonblockingServer;
 import org.apache.thrift.server.TServer;
@@ -27,97 +27,95 @@ import de.completionary.proxy.thrift.services.streaming.StreamingService;
 
 public class StreamingServerTest {
 
-    private static String index = "";
+	private static String index = "";
 
-    private StreamingService.Client client;
+	private StreamingService.Client client;
 
-    private StreamingClientHandler clientHandler;
+	private StreamingClientHandler clientHandler;
 
-    private static final int streamReceiverPort = 6538;
+	private static final int streamReceiverPort = 6538;
 
-    @BeforeClass
-    public static void setUpBeforeClass() {
-        /*
-         * Start the streaming server
-         */
-        new Thread(new Runnable() {
+	@BeforeClass
+	public static void setUpBeforeClass() {
+		/*
+		 * Start the streaming server
+		 */
+		new Thread(new Runnable() {
 
-            @Override
-            public void run() {
-                CompletionProxy.main(null);
-            }
-        }).start();
-    }
+			@Override
+			public void run() {
+				CompletionProxy.main(null);
+			}
+		}).start();
+	}
 
-    @Before
-    public void setUp() throws Exception {
-        /*
-         * Connect to the server
-         */
-        Random r = new Random();
-        index = "testindex" + r.nextInt();
+	@Before
+	public void setUp() throws Exception {
+		/*
+		 * Connect to the server
+		 */
+		Random r = new Random();
+		index = "testindex" + r.nextInt();
 
-        TTransport transport =
-                new TFramedTransport(new TSocket("localhost",
-                        ProxyOptions.STREAMING_SERVER_PORT));
-        TProtocol protocol = new TCompactProtocol(transport);
+		TTransport transport = new TFramedTransport(new TSocket("localhost",
+				ProxyOptions.STREAMING_SERVER_PORT));
+		TProtocol protocol = new TBinaryProtocol(transport);
 
-        client = new StreamingService.Client(protocol);
-        while (true) {
-            try {
-                transport.open();
-                break;
-            } catch (TTransportException e) {
-                e.printStackTrace();
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e1) {
-                }
-            }
-        }
+		client = new StreamingService.Client(protocol);
+		while (true) {
+			try {
+				transport.open();
+				break;
+			} catch (TTransportException e) {
+				e.printStackTrace();
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
+				}
+			}
+		}
 
-        /*
-         * Start the streaming client receiver
-         */
-        try {
-            TNonblockingServerTransport trans =
-                    new TNonblockingServerSocket(streamReceiverPort);
-            TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
-            args.transportFactory(new TFramedTransport.Factory());
-            args.protocolFactory(new TCompactProtocol.Factory());
-            clientHandler = new StreamingClientHandler();
-            args.processor(new StreamingClientService.AsyncProcessor<StreamingClientService.AsyncIface>(
-                    clientHandler));
-            final TServer server = new TNonblockingServer(args);
-            (new Thread() {
+		/*
+		 * Start the streaming client receiver
+		 */
+		try {
+			TNonblockingServerTransport trans = new TNonblockingServerSocket(
+					streamReceiverPort);
+			TNonblockingServer.Args args = new TNonblockingServer.Args(trans);
+			args.transportFactory(new TFramedTransport.Factory());
+			args.protocolFactory(new TBinaryProtocol.Factory());
+			clientHandler = new StreamingClientHandler();
+			args.processor(new StreamingClientService.AsyncProcessor<StreamingClientService.AsyncIface>(
+					clientHandler));
+			final TServer server = new TNonblockingServer(args);
+			(new Thread() {
 
-                @Override
-                public void run() {
-                    server.serve();
-                }
-            }).start();
+				@Override
+				public void run() {
+					server.serve();
+				}
+			}).start();
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
-    @After
-    public void tearDown() throws Exception {
-        SuggestionIndex.delete(index);
-    }
+	@After
+	public void tearDown() throws Exception {
+		SuggestionIndex.delete(index);
+	}
 
-    @Test
-    public void test() throws  
-            InterruptedException {
-        try {
-            client.establishStream("", "localhost", streamReceiverPort);
-        } catch (IndexUnknownException e) {
-            e.printStackTrace();
-        } catch (TException e) {
-            e.printStackTrace();
-        }
+	@Test
+	public void test() throws InterruptedException {
+		try {
+			client.establishStream("", "localhost", streamReceiverPort);
+		} catch (IndexUnknownException e) {
+			e.printStackTrace();
+		} catch (TException e) {
+			e.printStackTrace();
+		}
 
-        Thread.sleep(10000);
-    }
+		Thread.sleep(10000);
+	}
 }

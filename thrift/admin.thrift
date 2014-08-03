@@ -21,7 +21,9 @@ typedef i64 long
  *            List of strings used for the completion index triggering this
  *            field
  * @param payload
- *            Additional data stored with this term
+ *            Additional data stored with this term. The standard format
+ *            is the following JSON:
+ *            {"href":"$URL","image":"$URL_or_BASE64Image"}
  * @param weight
  *            Weight of the term
  */
@@ -31,7 +33,7 @@ struct SuggestionField {
 	2: string output;
 	// Required
 	3: list<string> input;
-	//will be a JSON and we have to specify supported base format
+	// Additinoal data to be stored
 	4: string payload;
 	// required
 	5: int weight;
