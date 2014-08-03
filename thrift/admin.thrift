@@ -48,6 +48,9 @@ service AdminService {
 	/**
 	 * Adds a single term (SuggestionField) to the DB and refreshes the index.
 	 * 
+ 	 * @param apiToken
+	 *			Must be given in any call to verify the identity of the api user
+	 *
 	 * @param ID
 	 * 			  Used to reference this field for deletion queries.
 	 * @param inputs
@@ -65,38 +68,39 @@ service AdminService {
 	 * @throws IOException
 	 */
 	long addSingleTerm(
-			1: string index,
-			2: string ID,
-			3: list<string> inputs,
-			4: string outputField,
-			5: string payload,
-			6: int weight);
+			1: string apiToken,
+			2: string index,
+			3: string ID,
+			4: list<string> inputs,
+			5: string outputField,
+			6: string payload,
+			7: int weight);
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long addTerms (1: string index, 2: list<SuggestionField> terms);
+	long addTerms (1: string apiToken, 2: string index, 3: list<SuggestionField> terms);
 
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string index, 2: string ID);
+	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string index, 2: list<string> ID);
+	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID);
 
 	/**
 	 * Deletes a whole index
 	 */
-	bool deleteIndex(1: string index);
+	bool deleteIndex(1: string apiToken, 2: string index);
 
 	/**
 	 * Clears an Index (deletes all fields)
 	 * @return The time in milliseconds spend on the server side
 	 */
-	long truncateIndex(1: string index);
+	long truncateIndex(1: string apiToken, 2: string index);
 }
