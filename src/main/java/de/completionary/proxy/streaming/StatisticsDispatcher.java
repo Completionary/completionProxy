@@ -268,8 +268,6 @@ public class StatisticsDispatcher extends TimerTask {
 
 							@Override
 							public void onComplete(Object o) {
-								System.out.println("Callback received!!!!!!");
-								System.out.println(o);
 							}
 
 							@Override
