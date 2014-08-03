@@ -98,33 +98,34 @@ public class StatisticsDispatcher extends TimerTask {
 
 			client = new StreamingClientServiceClient(protocolFactory,
 					clientManager, transport, hostName, port);
-			
+
 			clientsByHostAndPort.put(hostAndPortKey, client);
 			registerIndex(client, index);
 			resultHandler.onComplete(null);
-			
-//			for (int i = 0; i < 3; i++) {
-//				try {
-//					transport.open();
-//					clientsByHostAndPort.put(hostAndPortKey, client);
-//					registerIndex(client, index);
-//					resultHandler.onComplete(null);
-//					return;
-//				} catch (TTransportException e) {
-//					try {
-//						Thread.sleep(100);
-//					} catch (InterruptedException e1) {
-//					}
-//				}
-//			}
-//
-//			resultHandler
-//					.onError(new UnableToConnectToStreamingClientException(
-//							"Unable to connect to "
-//									+ hostName
-//									+ ":"
-//									+ port
-//									+ " which should be the address of a listening streaming server."));
+
+			// for (int i = 0; i < 3; i++) {
+			// try {
+			// transport.open();
+			// clientsByHostAndPort.put(hostAndPortKey, client);
+			// registerIndex(client, index);
+			// resultHandler.onComplete(null);
+			// return;
+			// } catch (TTransportException e) {
+			// try {
+			// Thread.sleep(100);
+			// } catch (InterruptedException e1) {
+			// }
+			// }
+			// }
+			//
+			// resultHandler
+			// .onError(new UnableToConnectToStreamingClientException(
+			// "Unable to connect to "
+			// + hostName
+			// + ":"
+			// + port
+			// +
+			// " which should be the address of a listening streaming server."));
 		} catch (IOException e2) {
 			// TODO Auto-generated catch block
 			e2.printStackTrace();
@@ -253,8 +254,9 @@ public class StatisticsDispatcher extends TimerTask {
 			/*
 			 * Send the stream to the client
 			 */
+			final StreamingClientServiceClient theClient = client;
 			try {
-				client.updateStatistics(streamForClient,
+				theClient.updateStatistics(streamForClient,
 						new AsyncMethodCallback<Object>() {
 
 							@Override
@@ -264,14 +266,20 @@ public class StatisticsDispatcher extends TimerTask {
 							}
 
 							@Override
-							public void onError(Exception arg0) {
-
+							public void onError(Exception e) {
+								System.err
+										.println("Unable to send stats to client "
+												+ theClient
+												+ ": "
+												+ e.getMessage());
+								disconnectClient(theClient);
 							}
 						});
-			} catch (TTransportException te) {
-				System.err.println("Unable to send stats to client " + client);
+			} catch (TTransportException | IllegalStateException e) {
+				System.err.println("Unable to send stats to client " + client
+						+ ": " + e.getMessage());
 				disconnectClient(client);
-			} catch (TException e) {
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
