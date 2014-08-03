@@ -71,7 +71,7 @@ class StatisticsAggregator {
 	public void onTermAdded() {
 		indexSize.incrementAndGet();
 	}
-	
+
 	/**
 	 * Must be called every time a term was deleted from the index
 	 */
