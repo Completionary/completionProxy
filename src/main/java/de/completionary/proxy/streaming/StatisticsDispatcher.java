@@ -20,6 +20,7 @@ import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.streaming.StreamingClientService;
+import de.completionary.proxy.thrift.services.streaming.UnableToConnectToStreamingClientException;
 
 public class StatisticsDispatcher extends TimerTask {
 
@@ -102,7 +103,7 @@ public class StatisticsDispatcher extends TimerTask {
 		}
 
 		resultHandler
-				.onError(new Exception(
+				.onError(new UnableToConnectToStreamingClientException(
 						"Unable to connect to "
 								+ hostName
 								+ ":"
@@ -136,6 +137,7 @@ public class StatisticsDispatcher extends TimerTask {
 	 */
 	@Override
 	public void run() {
+		System.out.println("Sending statistics");
 		/*
 		 * Iterate through all connected clients
 		 */

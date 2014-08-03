@@ -67,13 +67,14 @@ public class StreamingServerTest {
 				transport.open();
 				break;
 			} catch (TTransportException e) {
-				e.printStackTrace();
+				System.err.println("Unable to connect to StreamingService. Retrying...");
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e1) {
 				}
 			}
 		}
+		System.out.println("Connection to StreamingService established.");
 
 		/*
 		 * Start the streaming client receiver
@@ -116,6 +117,6 @@ public class StreamingServerTest {
 			e.printStackTrace();
 		}
 
-		Thread.sleep(10000);
+		Thread.sleep(100000);
 	}
 }
