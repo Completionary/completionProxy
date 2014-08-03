@@ -95,5 +95,5 @@ service StreamingClientService {
 	 * Key: Index
 	 * Value: statistics of the last second
 	 */
-	/*oneway*/ void updateStatistics(1: map<string, StreamedStatisticsField> stream);
+	oneway void updateStatistics(1: map<string, StreamedStatisticsField> stream);
 }
