@@ -14,7 +14,7 @@ typedef i64 long
  * @param ID
  *            Used to reference this field for deletion queries. Must be
  *            unique.
- * @param output
+ * @param outputField
  *            If not null, this string will be displayed returned in case
  *            this term matches a suggestion query
  * @param input
@@ -28,7 +28,7 @@ typedef i64 long
 struct SuggestionField {
 	1: string ID;
 	// May be null
-	2: string output;
+	2: string outputField;
 	// Required
 	3: list<string> input;
 	//will be a JSON and we have to specify supported base format
@@ -50,7 +50,7 @@ service AdminService {
 	 * 			  Used to reference this field for deletion queries.
 	 * @param inputs
 	 *            The strings used to build the suggestion index
-	 * @param output
+	 * @param outputField
 	 *            The String to be returned by a complete request if some of the
 	 *            inputs are matching. If this element is NULL the matching
 	 *            input string will be used instead.
@@ -66,7 +66,7 @@ service AdminService {
 			1: string index,
 			2: string ID,
 			3: list<string> inputs,
-			4: string output,
+			4: string outputField,
 			5: string payload,
 			6: int weight);
 
