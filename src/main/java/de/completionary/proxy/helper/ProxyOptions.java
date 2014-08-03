@@ -9,6 +9,7 @@ public class ProxyOptions extends Options {
     public static int ANALYTICS_SERVER_PORT;
     public static int STREAMING_SERVER_PORT;
     public static int SUGGESTION_SERVER_PORT;
+    
     static {
         try {
             Options.initialize("/etc/completionary/proxyOptions.cfg", MethodHandles.lookup()

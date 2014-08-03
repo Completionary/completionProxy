@@ -10,6 +10,11 @@ typedef i16 short
 typedef i32 int
 typedef i64 long
 
+exception UnableToConnectToStreamingClientException {
+	1: string message;
+}
+
+
 /**
  * A Container object to transfer realtime statistics of the last second
  * about one suggest index
@@ -59,7 +64,7 @@ service StreamingService {
 	 * @param port
 	 *            The port number of the stream receiver at the client side
 	 */
-	void establishStream(1: string index, 2: string hostName, 3: int port) throws (1: exceptions.IndexUnknownException indexUnkown);
+	void establishStream(1: string index, 2: string hostName, 3: int port) throws (1: exceptions.IndexUnknownException indexUnkown, 2: UnableToConnectToStreamingClientException unableToConnect);
 
 	/**
 	 * Allows a client to remove an index from the statistics stream
@@ -77,7 +82,7 @@ service StreamingService {
 	 * Forces the server not to send statistics to the client anymore
 	 * TODO: discuss if the set of indexes to which the client was connected will be removed (I would suggest to do so)
 	 */
-	void disconnectFromStatisticStream();
+	void disconnectFromStatisticStream(1: string hostName, 2: int port);
 }
 
 /**
@@ -90,5 +95,5 @@ service StreamingClientService {
 	 * Key: Index
 	 * Value: statistics of the last second
 	 */
-	oneway void updateStatistics(1: map<string, StreamedStatisticsField> stream);
+	/*oneway*/ void updateStatistics(1: map<string, StreamedStatisticsField> stream);
 }

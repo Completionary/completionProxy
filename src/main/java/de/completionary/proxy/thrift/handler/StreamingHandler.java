@@ -8,36 +8,29 @@ import de.completionary.proxy.thrift.services.streaming.StreamingService;
 
 public class StreamingHandler implements StreamingService.AsyncIface {
 
-    private final StatisticsDispatcher dispatcher;
+	private final StatisticsDispatcher dispatcher;
 
-    public StreamingHandler() {
-        super();
-        dispatcher = new StatisticsDispatcher();
-    }
+	public StreamingHandler() {
+		super();
+		dispatcher = new StatisticsDispatcher();
+	}
 
-    @Override
-    public void establishStream(
-            String index,
-            String hostName,
-            int port,
-            AsyncMethodCallback resultHandler) throws TException {
+	@Override
+	public void establishStream(String index, String hostName, int port,
+			AsyncMethodCallback resultHandler) throws TException {
 
-        dispatcher.registerClient(index, hostName, port, resultHandler);
-    }
+		dispatcher.registerClient(index, hostName, port, resultHandler);
+	}
 
-    @Override
-    public void disconnectStream(
-            String index,
-            String hostName,
-            int port,
-            AsyncMethodCallback resultHandler) throws TException {
-        resultHandler.onComplete(null);
-    }
+	@Override
+	public void disconnectStream(String index, String hostName, int port,
+			AsyncMethodCallback resultHandler) throws TException {
+		dispatcher.unregisterIndex(index, hostName, port, resultHandler);
+	}
 
-    @Override
-    public void
-        disconnectFromStatisticStream(AsyncMethodCallback resultHandler)
-                throws TException {
-        resultHandler.onComplete(null);
-    }
+	@Override
+	public void disconnectFromStatisticStream(String hostName, int port,
+			AsyncMethodCallback resultHandler) throws TException {
+		dispatcher.disconnectClient(hostName, port, resultHandler);
+	}
 }
