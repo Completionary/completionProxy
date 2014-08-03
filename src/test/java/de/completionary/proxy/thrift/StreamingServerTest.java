@@ -109,7 +109,7 @@ public class StreamingServerTest {
 	@Test
 	public void test() throws InterruptedException {
 		try {
-			client.establishStream("", "localhost", streamReceiverPort);
+			client.establishStream("wikipediaindex", "localhost", streamReceiverPort);
 		} catch (IndexUnknownException e) {
 			e.printStackTrace();
 		} catch (TException e) {
