@@ -22,6 +22,7 @@ import org.elasticsearch.action.admin.indices.mapping.delete.DeleteMappingRespon
 import org.elasticsearch.action.admin.indices.mapping.put.PutMappingResponse;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
+import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
@@ -117,7 +118,10 @@ public class SuggestionIndex {
 			addMapping(TYPE);
 		}
 
-		statisticsAggregator = new StatisticsAggregator();
+		statisticsAggregator = new StatisticsAggregator(indexSize(), /*
+																	 * TODO: get
+																	 * queriesThisMonth
+																	 */0);
 	}
 
 	/**
@@ -238,6 +242,9 @@ public class SuggestionIndex {
 
 			public void onResponse(DeleteResponse response) {
 				listener.onComplete(response.isFound());
+				if (response.isFound()) {
+					statisticsAggregator.onTermDeleted();
+				}
 			}
 
 			public void onFailure(Throwable e) {
@@ -641,6 +648,18 @@ public class SuggestionIndex {
 		return statisticsAggregator.getCurrentStatistics();
 	}
 
+	/**
+	 * Returns the number of terms stored in the index
+	 * 
+	 * @return The number of terms stored in the index
+	 */
+	public long indexSize() {
+		CountResponse countResponse = esClient.prepareCount(index)
+				.setTypes(TYPE).execute().actionGet();
+		
+		return countResponse.getCount();
+	}
+
 	public void waitForYellow() {
 		esClient.admin().cluster().prepareHealth().setIndices(index).execute()
 				.actionGet();
@@ -664,7 +683,8 @@ public class SuggestionIndex {
 	 *            The index to be checked
 	 * @return <true> if the given index is valid
 	 */
-	public static void checkIndexValidity(String index) throws InvalidIndexNameException {
+	public static void checkIndexValidity(String index)
+			throws InvalidIndexNameException {
 		if (!index.toLowerCase().equals(index)) {
 			throw new InvalidIndexNameException("An index must be lowercase");
 		}

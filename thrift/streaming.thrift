@@ -44,6 +44,8 @@ struct StreamedStatisticsField {
 	4: int numberOfSelectedSuggestions;
 	5: double conversionRate;
 	6: int numberOfShownSuggestions
+	7: long indexSize;
+	8: long numberOfQueriesThisMonth;
 }
 
 /**

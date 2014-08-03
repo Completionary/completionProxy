@@ -47,6 +47,8 @@ public class SuggestionIndexTest {
     public void Test() throws InterruptedException, ExecutionException,
             IOException {
         SuggestionIndex client = SuggestionIndex.getIndex(index);
+        
+        Assert.assertEquals(0,  client.indexSize());
 
         /*
          * Add a term
@@ -67,6 +69,8 @@ public class SuggestionIndexTest {
         });
         Assert.assertTrue("async_addSingleTerm has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
+        
+        Assert.assertEquals(1,  client.indexSize());
 
         /*
          * Find that term
