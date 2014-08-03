@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
@@ -23,19 +25,25 @@ class StatisticsAggregator {
 	/*
 	 * The completion index this aggregator stores statistics of
 	 */
-	private int numberOfCurrentUsers = 0;
+	private AtomicInteger numberOfCurrentUsers = new AtomicInteger(0);
 
-	private int numberOfQueries = 0;
+	private AtomicInteger numberOfQueries = new AtomicInteger(0);
 
 	private Set<String> randomSampleOfCurrentCompletedTerms = new TreeSet<String>();
 
-	private int numberOfSelectedSuggestions = 0;
+	private AtomicInteger numberOfSelectedSuggestions = new AtomicInteger(0);
 
 	private double conversionRate = 1.0;
 
-	private int numberOfShownSuggestions = 0;
+	private AtomicInteger numberOfShownSuggestions = new AtomicInteger(0);
 
-	public StatisticsAggregator() {
+	private AtomicLong indexSize;
+
+	private AtomicLong numberOfQueriesThisMonth;
+
+	public StatisticsAggregator(long indexSize, long numberOfQueriesThisMonth) {
+		this.indexSize = new AtomicLong(indexSize);
+		this.numberOfQueriesThisMonth = new AtomicLong(numberOfQueriesThisMonth);
 	}
 
 	/**
@@ -48,13 +56,27 @@ class StatisticsAggregator {
 	 */
 	public void onQuery(final String suggestRequest,
 			final List<Suggestion> suggestions) {
-
-		numberOfQueries++;
+		numberOfQueries.incrementAndGet();
+		numberOfQueriesThisMonth.incrementAndGet();
 		if (!suggestions.isEmpty()) {
-			numberOfShownSuggestions += suggestions.size();
+			numberOfShownSuggestions.addAndGet(suggestions.size());
 			randomSampleOfCurrentCompletedTerms.add(suggestions.get(0)
 					.getSuggestion());
 		}
+	}
+
+	/**
+	 * Must be called every time a new term was added to the index
+	 */
+	public void onTermAdded() {
+		indexSize.incrementAndGet();
+	}
+	
+	/**
+	 * Must be called every time a term was deleted from the index
+	 */
+	public void onTermDeleted() {
+		indexSize.decrementAndGet();
 	}
 
 	/**
@@ -64,10 +86,11 @@ class StatisticsAggregator {
 	 */
 	public StreamedStatisticsField getCurrentStatistics() {
 		StreamedStatisticsField result = new StreamedStatisticsField(
-				numberOfCurrentUsers, numberOfQueries, new ArrayList<String>(
-						randomSampleOfCurrentCompletedTerms),
-				numberOfSelectedSuggestions, conversionRate,
-				numberOfShownSuggestions);
+				numberOfCurrentUsers.get(), numberOfQueries.get(),
+				new ArrayList<String>(randomSampleOfCurrentCompletedTerms),
+				numberOfSelectedSuggestions.get(), conversionRate,
+				numberOfShownSuggestions.get(), indexSize.get(),
+				numberOfQueriesThisMonth.get());
 		reset();
 		return result;
 	}
@@ -76,11 +99,10 @@ class StatisticsAggregator {
 	 * Resets all statistics values
 	 */
 	private void reset() {
-		numberOfCurrentUsers = 0;
-		numberOfQueries = 0;
+		numberOfQueries.set(0);
 		randomSampleOfCurrentCompletedTerms = new TreeSet<String>();
-		numberOfSelectedSuggestions = 0;
+		numberOfSelectedSuggestions.set(0);
 		conversionRate = 1.0;
-		numberOfShownSuggestions = 0;
+		numberOfShownSuggestions.set(0);
 	}
 }
