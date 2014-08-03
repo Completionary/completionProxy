@@ -1,5 +1,7 @@
 namespace java de.completionary.proxy.thrift.services.admin
 
+include "exceptions.thrift"
+
 /*
  * Including a common.thrift with typedefs only works if you call
  * the type via common.int -> that's ugly so let's define it here
@@ -74,33 +76,33 @@ service AdminService {
 			4: list<string> inputs,
 			5: string outputField,
 			6: string payload,
-			7: int weight);
+			7: int weight) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long addTerms (1: string apiToken, 2: string index, 3: list<SuggestionField> terms);
+	long addTerms (1: string apiToken, 2: string index, 3: list<SuggestionField> terms) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID);
+	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID) throws (1: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID);
+	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID) throws (1: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Deletes a whole index
 	 */
-	bool deleteIndex(1: string apiToken, 2: string index);
+	bool deleteIndex(1: string apiToken, 2: string index) throws (1: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Clears an Index (deletes all fields)
 	 * @return The time in milliseconds spend on the server side
 	 */
-	long truncateIndex(1: string apiToken, 2: string index);
+	long truncateIndex(1: string apiToken, 2: string index) throws (1: exceptions.ServerDownException serverDownException);
 }

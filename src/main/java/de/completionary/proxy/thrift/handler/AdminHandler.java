@@ -10,13 +10,23 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.admin.AdminService;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
+import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 
 public class AdminHandler implements AdminService.AsyncIface {
 
 	@Override
 	public void addSingleTerm(String apiToken, String index, String ID,
 			List<String> inputs, String output, String payload, int weight,
-			final AsyncMethodCallback resultHandler) throws TException {
+			final AsyncMethodCallback resultHandler) {
+
+		try {
+			SuggestionIndex.checkIndexValidity(index);
+		} catch (InvalidIndexNameException e) {
+			resultHandler.onError(e);
+			return;
+		}
+
 		try {
 			SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
 					output, payload, weight, new AsyncMethodCallback<Long>() {
@@ -30,16 +40,20 @@ public class AdminHandler implements AdminService.AsyncIface {
 						}
 					});
 		} catch (IOException e) {
-			e.printStackTrace();
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
-
 	}
 
 	@Override
 	public void addTerms(String apiToken, String index,
-			List<SuggestionField> terms, final AsyncMethodCallback resultHandler)
-			throws TException {
+			List<SuggestionField> terms, final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.checkIndexValidity(index);
+		} catch (InvalidIndexNameException e) {
+			resultHandler.onError(e);
+			return;
+		}
+
 		try {
 			SuggestionIndex.getIndex(index).async_addTerms(terms,
 					new AsyncMethodCallback<Long>() {
@@ -53,15 +67,13 @@ public class AdminHandler implements AdminService.AsyncIface {
 						}
 					});
 		} catch (IOException e) {
-			e.printStackTrace();
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
-
 	}
 
 	@Override
 	public void deleteSingleTerm(String apiToken, String index, String ID,
-			final AsyncMethodCallback resultHandler) throws TException {
+			final AsyncMethodCallback resultHandler) {
 		try {
 			SuggestionIndex.getIndex(index).async_deleteSingleTerm(ID,
 					new AsyncMethodCallback<Boolean>() {
@@ -75,13 +87,13 @@ public class AdminHandler implements AdminService.AsyncIface {
 						}
 					});
 		} catch (IOException e) {
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
 	}
 
 	@Override
 	public void deleteTerms(String apiToken, String index, List<String> IDs,
-			final AsyncMethodCallback resultHandler) throws TException {
+			final AsyncMethodCallback resultHandler) {
 		try {
 			SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
 					new AsyncMethodCallback<Long>() {
@@ -95,26 +107,26 @@ public class AdminHandler implements AdminService.AsyncIface {
 						}
 					});
 		} catch (IOException e) {
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
 
 	}
 
 	@Override
 	public void deleteIndex(String apiToken, String index,
-			final AsyncMethodCallback resultHandler) throws TException {
+			final AsyncMethodCallback resultHandler) {
 		try {
 			SuggestionIndex.delete(index);
 		} catch (InterruptedException e) {
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		} catch (ExecutionException e) {
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
 	}
 
 	@Override
 	public void truncateIndex(String apiToken, String index,
-			final AsyncMethodCallback resultHandler) throws TException {
+			final AsyncMethodCallback resultHandler) {
 		try {
 			SuggestionIndex.getIndex(index).async_truncate(
 					new AsyncMethodCallback<Long>() {
@@ -128,7 +140,7 @@ public class AdminHandler implements AdminService.AsyncIface {
 						}
 					});
 		} catch (Exception e) {
-			resultHandler.onError(e);
+			resultHandler.onError(new ServerDownException(e.getMessage()));
 		}
 	}
 }

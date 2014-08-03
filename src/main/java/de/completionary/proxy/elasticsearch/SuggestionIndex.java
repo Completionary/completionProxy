@@ -35,6 +35,7 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
@@ -654,5 +655,18 @@ public class SuggestionIndex {
 		esClient.admin().indices().prepareOptimize(index)
 				.setOnlyExpungeDeletes(true).setWaitForMerge(true).execute()
 				.actionGet();
+	}
+
+	/**
+	 * Checks if an index is valid or malformed
+	 * 
+	 * @param index
+	 *            The index to be checked
+	 * @return <true> if the given index is valid
+	 */
+	public static void checkIndexValidity(String index) throws InvalidIndexNameException {
+		if (!index.toLowerCase().equals(index)) {
+			throw new InvalidIndexNameException("An index must be lowercase");
+		}
 	}
 }
