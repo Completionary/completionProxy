@@ -14,11 +14,16 @@ public class StreamingClientHandler implements
 	@Override
 	public void updateStatistics(Map<String, StreamedStatisticsField> stream,
 			AsyncMethodCallback resultHandler) throws TException {
-		System.out.println("Received stream:");
+		System.out.println("Received stream!!!!!!!!!!!!!:");
 		for (Map.Entry<String, StreamedStatisticsField> entry : stream
 				.entrySet()) {
 			System.out.println(entry.getKey() + "\t"
 					+ entry.getValue().numberOfQueries);
+		}
+		try {
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
 		}
 		resultHandler.onComplete(null);
 	}

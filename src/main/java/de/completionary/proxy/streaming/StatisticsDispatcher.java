@@ -1,5 +1,6 @@
 package de.completionary.proxy.streaming;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -9,15 +10,15 @@ import java.util.TimerTask;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TFramedTransport;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TTransportException;
 
-import StreamingClientService.StreamingClientServiceClient;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.thrift.clients.StreamingClientServiceClient;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
@@ -85,32 +86,52 @@ public class StatisticsDispatcher extends TimerTask {
 		/*
 		 * Connect to the client as it's an unknown one
 		 */
-		TTransport transport = new TFramedTransport(new TSocket(hostName, port));
-		TProtocol protocol = new TBinaryProtocol(transport);
+		try {
+			TNonblockingSocket transport = new TNonblockingSocket(hostName,
+					port);
+			transport.setTimeout(10);
 
-		client = new StreamingClientServiceClient(protocol, hostName, port);
-		for (int i = 0; i < 3; i++) {
-			try {
-				transport.open();
-				clientsByHostAndPort.put(hostAndPortKey, client);
-				registerIndex(client, index);
-				resultHandler.onComplete(null);
-				return;
-			} catch (TTransportException e) {
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e1) {
-				}
-			}
+			TProtocol protocol = new TBinaryProtocol(transport);
+
+			TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
+			TAsyncClientManager clientManager = new TAsyncClientManager();
+			// new TBinaryProtocol.Factory(), new TAsyncClientManager(),
+			// transport,
+
+			client = new StreamingClientServiceClient(protocolFactory,
+					clientManager, transport, hostName, port);
+			
+			clientsByHostAndPort.put(hostAndPortKey, client);
+			registerIndex(client, index);
+			resultHandler.onComplete(null);
+			
+//			for (int i = 0; i < 3; i++) {
+//				try {
+//					transport.open();
+//					clientsByHostAndPort.put(hostAndPortKey, client);
+//					registerIndex(client, index);
+//					resultHandler.onComplete(null);
+//					return;
+//				} catch (TTransportException e) {
+//					try {
+//						Thread.sleep(100);
+//					} catch (InterruptedException e1) {
+//					}
+//				}
+//			}
+//
+//			resultHandler
+//					.onError(new UnableToConnectToStreamingClientException(
+//							"Unable to connect to "
+//									+ hostName
+//									+ ":"
+//									+ port
+//									+ " which should be the address of a listening streaming server."));
+		} catch (IOException e2) {
+			// TODO Auto-generated catch block
+			e2.printStackTrace();
 		}
 
-		resultHandler
-				.onError(new UnableToConnectToStreamingClientException(
-						"Unable to connect to "
-								+ hostName
-								+ ":"
-								+ port
-								+ " which should be the address of a listening streaming server."));
 	}
 
 	/**
@@ -147,9 +168,6 @@ public class StatisticsDispatcher extends TimerTask {
 	 */
 	public synchronized void unregisterIndex(String index, String hostName,
 			int port, AsyncMethodCallback<Void> resultHandler) {
-		/*
-		 * Check if we already know the client
-		 */
 		final String hostAndPortKey = hostName + port;
 
 		StreamingClientServiceClient client = clientsByHostAndPort
@@ -175,9 +193,8 @@ public class StatisticsDispatcher extends TimerTask {
 	 */
 	public synchronized void disconnectClient(
 			StreamingClientServiceClient client) {
-		System.out.println("Disconnecting from streaming client "
-				+ client.hostname + ":" + client.port);
 		if (client != null) {
+			System.out.println("Disconnecting from streaming client " + client);
 			indicesByClient.remove(client);
 			clientsByHostAndPort.remove(client.hostname + client.port);
 		}
@@ -196,6 +213,7 @@ public class StatisticsDispatcher extends TimerTask {
 		StreamingClientServiceClient client = clientsByHostAndPort
 				.get(hostAndPortKey);
 		if (client != null) {
+			System.out.println("Disconnecting streaming client " + client);
 			indicesByClient.remove(client);
 			clientsByHostAndPort.remove(client.hostname + client.port);
 		}
@@ -243,8 +261,22 @@ public class StatisticsDispatcher extends TimerTask {
 			 * Send the stream to the client
 			 */
 			try {
-				client.updateStatistics(streamForClient);
+				client.updateStatistics(streamForClient,
+						new AsyncMethodCallback<Object>() {
+
+							@Override
+							public void onComplete(Object o) {
+								System.out.println("Callback received!!!!!!");
+								System.out.println(o);
+							}
+
+							@Override
+							public void onError(Exception arg0) {
+
+							}
+						});
 			} catch (TTransportException te) {
+				System.err.println("Unable to send stats to client " + client);
 				disconnectClient(client);
 			} catch (TException e) {
 				e.printStackTrace();
