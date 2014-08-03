@@ -151,7 +151,7 @@ public class SuggestionIndex {
 		for (SuggestionField field : terms) {
 			bulkRequest.add(esClient.prepareIndex(index, TYPE, field.ID)
 					.setSource(
-							generateFieldJS(field.input, field.output,
+							generateFieldJS(field.input, field.outputField,
 									field.payload, field.weight)));
 		}
 

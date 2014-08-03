@@ -13,128 +13,122 @@ import de.completionary.proxy.thrift.services.admin.SuggestionField;
 
 public class AdminHandler implements AdminService.AsyncIface {
 
-    public void addSingleTerm(
-            String index,
-            String ID,
-            List<String> inputs,
-            String output,
-            String payload,
-            int weight,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
-                    output, payload, weight, new AsyncMethodCallback<Long>() {
+	@Override
+	public void addSingleTerm(String apiToken, String index, String ID,
+			List<String> inputs, String output, String payload, int weight,
+			final AsyncMethodCallback resultHandler) throws TException {
+		try {
+			SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
+					output, payload, weight, new AsyncMethodCallback<Long>() {
 
-                        public void onComplete(Long time) {
-                            resultHandler.onComplete(time);
-                        }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            e.printStackTrace();
-            resultHandler.onError(e);
-        }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			e.printStackTrace();
+			resultHandler.onError(e);
+		}
 
-    }
+	}
 
-    public void addTerms(
-            String index,
-            List<SuggestionField> terms,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.getIndex(index).async_addTerms(terms,
-                    new AsyncMethodCallback<Long>() {
+	@Override
+	public void addTerms(String apiToken, String index,
+			List<SuggestionField> terms, final AsyncMethodCallback resultHandler)
+			throws TException {
+		try {
+			SuggestionIndex.getIndex(index).async_addTerms(terms,
+					new AsyncMethodCallback<Long>() {
 
-                        public void onComplete(Long time) {
-                            resultHandler.onComplete(time);
-                        }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            e.printStackTrace();
-            resultHandler.onError(e);
-        }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			e.printStackTrace();
+			resultHandler.onError(e);
+		}
 
-    }
+	}
 
-    public void deleteSingleTerm(
-            String index,
-            String ID,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.getIndex(index).async_deleteSingleTerm(ID,
-                    new AsyncMethodCallback<Boolean>() {
+	@Override
+	public void deleteSingleTerm(String apiToken, String index, String ID,
+			final AsyncMethodCallback resultHandler) throws TException {
+		try {
+			SuggestionIndex.getIndex(index).async_deleteSingleTerm(ID,
+					new AsyncMethodCallback<Boolean>() {
 
-                        public void onComplete(Boolean b) {
-                            resultHandler.onComplete(b);
-                        }
+						public void onComplete(Boolean b) {
+							resultHandler.onComplete(b);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(e);
-        }
-    }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(e);
+		}
+	}
 
-    public void deleteTerms(
-            String index,
-            List<String> IDs,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
-                    new AsyncMethodCallback<Long>() {
+	@Override
+	public void deleteTerms(String apiToken, String index, List<String> IDs,
+			final AsyncMethodCallback resultHandler) throws TException {
+		try {
+			SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
+					new AsyncMethodCallback<Long>() {
 
-                        public void onComplete(Long b) {
-                            resultHandler.onComplete(b);
-                        }
+						public void onComplete(Long b) {
+							resultHandler.onComplete(b);
+						}
 
-                        public void onError(Exception e) {
-                            e.printStackTrace();
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(e);
-        }
+						public void onError(Exception e) {
+							e.printStackTrace();
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(e);
+		}
 
-    }
+	}
 
-    public void deleteIndex(
-            String index,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.delete(index);
-        } catch (InterruptedException e) {
-            resultHandler.onError(e);
-        } catch (ExecutionException e) {
-            resultHandler.onError(e);
-        }
-    }
+	@Override
+	public void deleteIndex(String apiToken, String index,
+			final AsyncMethodCallback resultHandler) throws TException {
+		try {
+			SuggestionIndex.delete(index);
+		} catch (InterruptedException e) {
+			resultHandler.onError(e);
+		} catch (ExecutionException e) {
+			resultHandler.onError(e);
+		}
+	}
 
-    public void truncateIndex(
-            String index,
-            final AsyncMethodCallback resultHandler) throws TException {
-        try {
-            SuggestionIndex.getIndex(index).async_truncate(
-                    new AsyncMethodCallback<Long>() {
+	@Override
+	public void truncateIndex(String apiToken, String index,
+			final AsyncMethodCallback resultHandler) throws TException {
+		try {
+			SuggestionIndex.getIndex(index).async_truncate(
+					new AsyncMethodCallback<Long>() {
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
 
-                        public void onComplete(Long time) {
-                            resultHandler.onComplete(time);
-                        }
-                    });
-        } catch (Exception e) {
-            resultHandler.onError(e);
-        }
-    }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
+					});
+		} catch (Exception e) {
+			resultHandler.onError(e);
+		}
+	}
 }

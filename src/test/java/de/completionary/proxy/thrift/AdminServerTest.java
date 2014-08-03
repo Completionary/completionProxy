@@ -68,7 +68,7 @@ public class AdminServerTest {
 
 	@Test
 	public void test() throws TException {
-		client.addSingleTerm(index, "1",
+		client.addSingleTerm("",index, "1",
 				Arrays.asList(new String[] { "bla", "blub" }), "bla blub",
 				"payload", 3);
 
