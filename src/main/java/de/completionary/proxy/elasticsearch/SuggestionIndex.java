@@ -38,6 +38,7 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
+import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 public class SuggestionIndex {
@@ -333,7 +334,8 @@ public class SuggestionIndex {
 	 *            arrived
 	 */
 	public void async_findSuggestionsFor(final String suggestRequest,
-			final int size, final AsyncMethodCallback<List<Suggestion>> listener) {
+			final int size, final AnalyticsData userData,
+			final AsyncMethodCallback<List<Suggestion>> listener) {
 
 		CompletionSuggestionBuilder compBuilder = new CompletionSuggestionBuilder(
 				SUGGEST_FIELD).field(SUGGEST_FIELD).text(suggestRequest);
@@ -348,7 +350,8 @@ public class SuggestionIndex {
 						response, size);
 				listener.onComplete(suggestions);
 
-				statisticsAggregator.onQuery(suggestRequest, suggestions);
+				statisticsAggregator.onQuery(userData, suggestRequest,
+						suggestions);
 			}
 
 			public void onFailure(Throwable e) {
@@ -367,7 +370,7 @@ public class SuggestionIndex {
 	 * @return A list of Suggestions fitting the requested string
 	 */
 	public List<Suggestion> findSuggestionsFor(final String suggestRequest,
-			final int size) {
+			final int size, final AnalyticsData userData) {
 
 		CompletionSuggestionBuilder compBuilder = new CompletionSuggestionBuilder(
 				SUGGEST_FIELD).field(SUGGEST_FIELD).text(suggestRequest);
@@ -379,7 +382,7 @@ public class SuggestionIndex {
 
 		List<Suggestion> suggestions = generateSuggestionsFromESResponse(
 				response, size);
-		statisticsAggregator.onQuery(suggestRequest, suggestions);
+		statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
 
 		return suggestions;
 	}
@@ -656,7 +659,7 @@ public class SuggestionIndex {
 	public long indexSize() {
 		CountResponse countResponse = esClient.prepareCount(index)
 				.setTypes(TYPE).execute().actionGet();
-		
+
 		return countResponse.getCount();
 	}
 
@@ -688,5 +691,13 @@ public class SuggestionIndex {
 		if (!index.toLowerCase().equals(index)) {
 			throw new InvalidIndexNameException("An index must be lowercase");
 		}
+	}
+
+	/**
+	 * Must be called every time an search session is finished (suggestion is
+	 * selected, timeout or query is deleted)
+	 */
+	public void onSearchSessionFinished(AnalyticsData userData) {
+		statisticsAggregator.onSearchSessionFinished(userData);
 	}
 }
