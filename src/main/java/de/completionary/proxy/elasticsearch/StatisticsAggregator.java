@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
+import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 /**
@@ -48,9 +49,10 @@ class StatisticsAggregator {
 	}
 
 	/**
-	 * Must be called every time an search session is finished
+	 * Must be called every time an search session is finished (suggestion is
+	 * selected, timeout or query is deleted)
 	 */
-	public void onSearchSessionFinished(long userID) {
+	public void onSearchSessionFinished(AnalyticsData userData) {
 		numberOfSearchSessions.incrementAndGet();
 	}
 
@@ -64,9 +66,9 @@ class StatisticsAggregator {
 	 * @param suggestions
 	 *            The list of suggestions that was sent back to the client
 	 */
-	public void onQuery(long userID, final String suggestRequest,
+	public void onQuery(AnalyticsData userData, final String suggestRequest,
 			final List<Suggestion> suggestions) {
-		activeUsers.add(userID);
+		activeUsers.add(userData.userID);
 		numberOfQueries.incrementAndGet();
 		numberOfQueriesThisMonth.incrementAndGet();
 		if (!suggestions.isEmpty()) {
