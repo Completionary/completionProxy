@@ -5,10 +5,16 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import junit.framework.Assert;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
@@ -24,6 +30,7 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
@@ -36,6 +43,7 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
+import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
@@ -349,15 +357,30 @@ public class SuggestionIndex {
 		ListenableActionFuture<SuggestResponse> future = esClient
 				.prepareSuggest(index).addSuggestion(compBuilder).execute();
 
+		/*
+		 * Async AS request finding suggestions
+		 */
 		future.addListener(new ActionListener<SuggestResponse>() {
 
 			public void onResponse(SuggestResponse response) {
-				List<Suggestion> suggestions = generateSuggestionsFromESResponse(
-						response, size);
-				listener.onComplete(suggestions);
+				/*
+				 * Async requests getting payload data
+				 */
+				generateSuggestionsFromESResponse(response, size,
+						new AsyncMethodCallback<List<Suggestion>>() {
 
-				statisticsAggregator.onQuery(userData, suggestRequest,
-						suggestions);
+							@Override
+							public void onComplete(List<Suggestion> suggestions) {
+								listener.onComplete(suggestions);
+								statisticsAggregator.onQuery(userData,
+										suggestRequest, suggestions);
+							}
+
+							@Override
+							public void onError(Exception e) {
+								listener.onError(e);
+							}
+						});
 			}
 
 			public void onFailure(Throwable e) {
@@ -376,7 +399,8 @@ public class SuggestionIndex {
 	 * @return A list of Suggestions fitting the requested string
 	 */
 	public List<Suggestion> findSuggestionsFor(final String suggestRequest,
-			final int size, final AnalyticsData userData) {
+			final int size, final AnalyticsData userData)
+			throws ServerDownException {
 
 		CompletionSuggestionBuilder compBuilder = new CompletionSuggestionBuilder(
 				SUGGEST_FIELD).field(SUGGEST_FIELD).text(suggestRequest);
@@ -386,11 +410,63 @@ public class SuggestionIndex {
 
 		SuggestResponse response = suggestRequestBuilder.execute().actionGet();
 
-		List<Suggestion> suggestions = generateSuggestionsFromESResponse(
-				response, size);
-		statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
+		/*
+		 * Call the async function generateSuggestionsFromESResponse and
+		 * synchronize it
+		 */
+		final CountDownLatch lock = new CountDownLatch(1);
 
+		final List<Suggestion> suggestions = new ArrayList<Suggestion>();
+		generateSuggestionsFromESResponse(response, size,
+				new AsyncMethodCallback<List<Suggestion>>() {
+
+					@Override
+					public void onComplete(List<Suggestion> s) {
+						suggestions.addAll(s);
+						lock.countDown();
+					}
+
+					@Override
+					public void onError(Exception arg0) {
+						arg0.printStackTrace();
+						lock.countDown();
+					}
+				});
+
+		try {
+			if (!lock.await(2000, TimeUnit.MILLISECONDS)) {
+				throw new ServerDownException(
+						"Timeout while retrieving payloads");
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
 		return suggestions;
+	}
+
+	/**
+	 * Returns the payload of the suggestion defined by [suggestionID]
+	 * 
+	 * @param suggestionID
+	 *            The ID of the suggestion which payload is to be returned
+	 * @return The requested payload or [null] if the s does not exist
+	 */
+	public void getPayload(long suggestionID,
+			final AsyncMethodCallback<String> callback) {
+		ListenableActionFuture<GetResponse> future = esClient.prepareGet(
+				payloadIndex, TYPE, Long.toString(suggestionID)).execute();
+
+		future.addListener(new ActionListener<GetResponse>() {
+
+			public void onResponse(GetResponse response) {
+				callback.onComplete(response.getSourceAsString());
+			}
+
+			public void onFailure(Throwable e) {
+				callback.onError(new Exception(e.getMessage()));
+			}
+		});
 	}
 
 	/**
@@ -403,8 +479,9 @@ public class SuggestionIndex {
 	 * @return The generated List of suggestion containing all suggestions in
 	 *         the given response
 	 */
-	private List<Suggestion> generateSuggestionsFromESResponse(
-			final SuggestResponse response, final int size) {
+	private void generateSuggestionsFromESResponse(
+			final SuggestResponse response, final int size,
+			final AsyncMethodCallback<List<Suggestion>> callback) {
 
 		CompletionSuggestion compSuggestion = response.getSuggest()
 				.getSuggestion(SUGGEST_FIELD);
@@ -421,18 +498,49 @@ public class SuggestionIndex {
 				/*
 				 * Loop through all suggestions
 				 */
-				List<Suggestion> suggestions = new ArrayList<Suggestion>(
-						options.size());
+				// List<Suggestion> suggestions = new ArrayList<Suggestion>(
+				// options.size());
+				final Suggestion[] suggestions = new Suggestion[options.size()];
 
-				for (CompletionSuggestion.Entry.Option option : options) {
-					suggestions.add(new Suggestion(option.getText().toString(),
-							option.getPayloadAsString(), option
-									.getPayloadAsLong()));
+				/*
+				 * Used to count how many async requests have already been
+				 * responded
+				 */
+				final AtomicInteger remainingRequests = new AtomicInteger(
+						suggestions.length);
+
+				for (int i = 0; i != suggestions.length; i++) {
+					final int suggestionNumber = i;
+					CompletionSuggestion.Entry.Option option = options.get(i);
+
+					suggestions[i].suggestion = option.getText().toString();
+					suggestions[i].ID = option.getPayloadAsLong();
+
+					getPayload(option.getPayloadAsLong(),
+							new AsyncMethodCallback<String>() {
+
+								@Override
+								public void onError(Exception e) {
+									if (remainingRequests.decrementAndGet() == 0) {
+										callback.onError(e);
+									}
+								}
+
+								@Override
+								public void onComplete(String payload) {
+									suggestions[suggestionNumber].payload = payload;
+
+									if (remainingRequests.decrementAndGet() == 0) {
+										// the last request is finished
+										callback.onComplete(Arrays
+												.asList(suggestions));
+									}
+								}
+							});
 				}
-				return suggestions;
 			}
 		}
-		return new ArrayList<Suggestion>(0);
+		callback.onComplete(new ArrayList<Suggestion>(0));
 	}
 
 	/**
