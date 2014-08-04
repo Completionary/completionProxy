@@ -1,3 +1,4 @@
+*.log
 gen-*
 data/
 # Let's ignore the auto-generated thrift classes for now

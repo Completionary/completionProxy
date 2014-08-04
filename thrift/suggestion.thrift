@@ -22,7 +22,7 @@ typedef i64 long
 struct Suggestion {
 	1: string suggestion;
 	2: string payload;
-	3: string ID
+	3: long ID
 }
 
 /*

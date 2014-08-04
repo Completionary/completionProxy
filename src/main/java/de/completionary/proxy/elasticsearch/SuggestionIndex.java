@@ -24,7 +24,6 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
@@ -157,10 +156,13 @@ public class SuggestionIndex {
 
 		BulkRequestBuilder bulkRequest = esClient.prepareBulk();
 		for (SuggestionField field : terms) {
-			bulkRequest.add(esClient.prepareIndex(index, TYPE, field.ID)
-					.setSource(
-							generateFieldJS(field.input, field.outputField,
-									field.payload, field.weight)));
+			bulkRequest.add(esClient.prepareIndex(index, TYPE,
+					Long.toString(field.ID)).setSource(
+					generateFieldJS(field.input, field.outputField, field.ID,
+							field.weight)));
+
+			bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
+					Long.toString(field.ID)).setSource(field.payload));
 		}
 
 		ListenableActionFuture<BulkResponse> future = bulkRequest.setRefresh(
@@ -200,28 +202,30 @@ public class SuggestionIndex {
 	 *            async ES call took
 	 * @throws IOException
 	 */
-	public void async_addSingleTerm(final String ID, final List<String> inputs,
+	public void async_addSingleTerm(final long ID, final List<String> inputs,
 			final String output, final String payload, final int weight,
 			final AsyncMethodCallback<Long> listener) throws IOException {
 
-		ListenableActionFuture<IndexResponse> future = esClient
-				.prepareIndex(index, TYPE, ID)
-				.setSource(generateFieldJS(inputs, output, payload, weight))
-				.setRefresh(true).execute();
+		BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+		bulkRequest.add(esClient.prepareIndex(index, TYPE, Long.toString(ID))
+				.setSource(generateFieldJS(inputs, output, ID, weight)));
 
-		final long start = System.currentTimeMillis();
+		bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
+				Long.toString(ID)).setSource(payload));
 
-		future.addListener(new ActionListener<IndexResponse>() {
+		ListenableActionFuture<BulkResponse> future = bulkRequest.setRefresh(
+				true).execute();
 
-			public void onResponse(IndexResponse response) {
-				listener.onComplete(System.currentTimeMillis() - start);
+		future.addListener(new ActionListener<BulkResponse>() {
+
+			public void onResponse(BulkResponse response) {
+				listener.onComplete(response.getTookInMillis());
 			}
 
 			public void onFailure(Throwable e) {
 				listener.onError(new Exception(e.getMessage()));
 			}
 		});
-
 	}
 
 	/**
@@ -300,7 +304,7 @@ public class SuggestionIndex {
 	 * @throws IOException
 	 */
 	private XContentBuilder generateFieldJS(final List<String> inputs,
-			final String output, final String payload, final int weight)
+			final String output, final long payloadID, final int weight)
 			throws IOException {
 		String name = output;
 		if (name == null) {
@@ -319,7 +323,7 @@ public class SuggestionIndex {
 		if (output != null) {
 			b.field("output", output);
 		}
-		b.field("payload", payload).field("weight", weight).endObject()
+		b.field("payload", payloadID).field("weight", weight).endObject()
 				.endObject();
 		return b;
 	}
@@ -422,7 +426,8 @@ public class SuggestionIndex {
 
 				for (CompletionSuggestion.Entry.Option option : options) {
 					suggestions.add(new Suggestion(option.getText().toString(),
-							option.getPayloadAsString(), option.g));
+							option.getPayloadAsString(), option
+									.getPayloadAsLong()));
 				}
 				return suggestions;
 			}

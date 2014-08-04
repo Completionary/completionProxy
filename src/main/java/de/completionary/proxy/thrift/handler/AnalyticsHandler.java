@@ -12,31 +12,26 @@ import de.completionary.proxy.thrift.services.analytics.AnalyticsService;
 
 public class AnalyticsHandler implements AnalyticsService.AsyncIface {
 
-    public void topQueriesSince(
-            int date,
-            short k,
-            AsyncMethodCallback/* <List<SuggestionField> > */resultHandler)
-            throws TException {
-        List<SuggestionField> l = new ArrayList<SuggestionField>();
-        l.add(new SuggestionField("ID1", "output string", Arrays
-                .asList(new String[] {
-                    "output", "string"
-                }), "payload", 1));
-        resultHandler.onComplete(l);
-    }
+	public void topQueriesSince(int date, short k,
+			AsyncMethodCallback/* <List<SuggestionField> > */resultHandler)
+			throws TException {
+		List<SuggestionField> l = new ArrayList<SuggestionField>();
+		l.add(new SuggestionField(1, "output string", Arrays
+				.asList(new String[] { "output", "string" }), "payload", 1));
+		resultHandler.onComplete(l);
+	}
 
-    @Override
-    public void getNumberOfTotalQueriesThisMonth(
-            String index,
-            AsyncMethodCallback resultHandler) throws TException {
-        // TODO Auto-generated method stub
-        
-    }
+	@Override
+	public void getNumberOfTotalQueriesThisMonth(String index,
+			AsyncMethodCallback resultHandler) throws TException {
+		// TODO Auto-generated method stub
 
-    @Override
-    public void getIndexSize(String index, AsyncMethodCallback resultHandler)
-            throws TException {
-        // TODO Auto-generated method stub
-        
-    }
+	}
+
+	@Override
+	public void getIndexSize(String index, AsyncMethodCallback resultHandler)
+			throws TException {
+		// TODO Auto-generated method stub
+
+	}
 }

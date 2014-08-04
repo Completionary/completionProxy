@@ -14,167 +14,132 @@ import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 
 public class AdminHandler implements AdminService.AsyncIface {
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void addSingleTerm(
-            String apiToken,
-            String index,
-            String ID,
-            List<String> inputs,
-            String output,
-            String payload,
-            int weight,
-            final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
+	@Override
+	public void addSingleTerm(String apiToken, String index, long ID,
+			List<String> inputs, String output, String payload, int weight,
+			final AsyncMethodCallback resultHandler) {
 
-        try {
-            SuggestionIndex.checkIndexValidity(index);
-        } catch (InvalidIndexNameException e) {
-            resultHandler.onError(e);
-            return;
-        }
+		try {
+			SuggestionIndex.checkIndexValidity(index);
+		} catch (InvalidIndexNameException e) {
+			resultHandler.onError(e);
+			return;
+		}
 
-        try {
-            SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
-                    output, payload, weight, new AsyncMethodCallback<Long>() {
+		try {
+			SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
+					output, payload, weight, new AsyncMethodCallback<Long>() {
 
-                        @SuppressWarnings("unchecked")
-                        public void onComplete(Long time) {
-                            resultHandler.onComplete(time);
-                        }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
-    }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
+	}
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void addTerms(
-            String apiToken,
-            String index,
-            List<SuggestionField> terms,
-            final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
-        try {
-            SuggestionIndex.checkIndexValidity(index);
-        } catch (InvalidIndexNameException e) {
-            resultHandler.onError(e);
-            return;
-        }
+	@Override
+	public void addTerms(String apiToken, String index,
+			List<SuggestionField> terms, final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.checkIndexValidity(index);
+		} catch (InvalidIndexNameException e) {
+			resultHandler.onError(e);
+			return;
+		}
 
-        try {
-            SuggestionIndex.getIndex(index).async_addTerms(terms,
-                    new AsyncMethodCallback<Long>() {
+		try {
+			SuggestionIndex.getIndex(index).async_addTerms(terms,
+					new AsyncMethodCallback<Long>() {
 
-                        @SuppressWarnings("unchecked")
-                        public void onComplete(Long time) {
-                            resultHandler.onComplete(time);
-                        }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
-    }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
+	}
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void deleteSingleTerm(
-            String apiToken,
-            String index,
-            String ID,
-            final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
-        try {
-            SuggestionIndex.getIndex(index).async_deleteSingleTerm(ID,
-                    new AsyncMethodCallback<Boolean>() {
+	@Override
+	public void deleteSingleTerm(String apiToken, String index, long ID,
+			final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.getIndex(index).async_deleteSingleTerm(
+					Long.toString(ID), new AsyncMethodCallback<Boolean>() {
 
-                        @SuppressWarnings("unchecked")
-                        public void onComplete(Boolean b) {
-                            resultHandler.onComplete(b);
-                        }
+						public void onComplete(Boolean b) {
+							resultHandler.onComplete(b);
+						}
 
-                        public void onError(Exception e) {
-                            resultHandler.onError(e);
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
-    }
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
+	}
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void deleteTerms(
-            String apiToken,
-            String index,
-            List<String> IDs,
-            final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
-        try {
-            SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
-                    new AsyncMethodCallback<Long>() {
+	@Override
+	public void deleteTerms(String apiToken, String index, List<String> IDs,
+			final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
+					new AsyncMethodCallback<Long>() {
 
-                        @SuppressWarnings("unchecked")
-                        public void onComplete(Long b) {
-                            resultHandler.onComplete(b);
-                        }
+						public void onComplete(Long b) {
+							resultHandler.onComplete(b);
+						}
 
-                        public void onError(Exception e) {
-                            e.printStackTrace();
-                        }
-                    });
-        } catch (IOException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
+						public void onError(Exception e) {
+							e.printStackTrace();
+						}
+					});
+		} catch (IOException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
 
-    }
+	}
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void deleteIndex(
-            String apiToken,
-            String index,
-            final AsyncMethodCallback resultHandler) {
-        try {
-            SuggestionIndex.delete(index);
-        } catch (InterruptedException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        } catch (ExecutionException e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
-    }
+	@Override
+	public void deleteIndex(String apiToken, String index,
+			final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.delete(index);
+		} catch (InterruptedException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		} catch (ExecutionException e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
+	}
 
-    @Override
-    @SuppressWarnings("rawtypes")
-    public void truncateIndex(
-            String apiToken,
-            String index,
-            final AsyncMethodCallback resultHandler) {
-        try {
-            SuggestionIndex.getIndex(index).async_truncate(
+	@Override
+	public void truncateIndex(String apiToken, String index,
+			final AsyncMethodCallback resultHandler) {
+		try {
+			SuggestionIndex.getIndex(index).async_truncate(
+					new AsyncMethodCallback<Long>() {
 
-            new AsyncMethodCallback<Long>() {
+						public void onError(Exception e) {
+							resultHandler.onError(e);
+						}
 
-                public void onError(Exception e) {
-                    resultHandler.onError(e);
-                }
-
-                @SuppressWarnings("unchecked")
-                public void onComplete(Long time) {
-                    resultHandler.onComplete(time);
-                }
-            });
-        } catch (Exception e) {
-            resultHandler.onError(new ServerDownException(e.getMessage()));
-        }
-    }
+						public void onComplete(Long time) {
+							resultHandler.onComplete(time);
+						}
+					});
+		} catch (Exception e) {
+			resultHandler.onError(new ServerDownException(e.getMessage()));
+		}
+	}
 }
