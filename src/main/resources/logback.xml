@@ -1,0 +1,23 @@
+<configuration>
+
+<appender name="FILE" class="ch.qos.logback.core.FileAppender">
+    <file>suggestions.log</file>
+    <encoder>
+      <pattern>%date\t%msg%n</pattern>
+    </encoder>
+  </appender>
+  
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- encoders are assigned the type
+         ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+    <encoder>
+      <pattern>%date\t%msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <logger name="de.completionary.proxy.elasticsearch.AnalyticsLogger2">
+    <appender-ref ref="FILE" />
+  </logger>
+
+  
+</configuration>

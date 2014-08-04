@@ -19,6 +19,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import de.completionary.proxy.elasticsearch.AnalyticsLogger;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
@@ -152,5 +153,12 @@ public class SuggestionIndexTest {
 		Assert.assertTrue("async_findSuggestionsFor has timed out",
 				lock.await(2000, TimeUnit.MILLISECONDS));
 		Assert.assertEquals(0, results.size());
+	}
+	
+	@Test
+	public void LoggerTest(){
+		AnalyticsLogger logger = new AnalyticsLogger();
+		
+		logger.logQuery(new AnalyticsData(123, "asdf"), "str");
 	}
 }

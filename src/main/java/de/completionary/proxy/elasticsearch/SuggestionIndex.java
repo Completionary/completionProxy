@@ -47,6 +47,7 @@ public class SuggestionIndex {
 	 * The es index identifying this suggestion index
 	 */
 	private final String index;
+	private final String payloadIndex;
 
 	private final StatisticsAggregator statisticsAggregator;
 
@@ -108,6 +109,7 @@ public class SuggestionIndex {
 	private SuggestionIndex(String indexID) throws ExecutionException,
 			InterruptedException, IOException {
 		this.index = indexID;
+		this.payloadIndex = indexID + "-payload";
 
 		/*
 		 * Create the ES index if it does not exist yet
@@ -420,7 +422,7 @@ public class SuggestionIndex {
 
 				for (CompletionSuggestion.Entry.Option option : options) {
 					suggestions.add(new Suggestion(option.getText().toString(),
-							option.getPayloadAsString()));
+							option.getPayloadAsString(), option.g));
 				}
 				return suggestions;
 			}
@@ -500,6 +502,14 @@ public class SuggestionIndex {
 
 			if (!response.isAcknowledged()) {
 				System.err.println("Unable to create index " + index);
+				return;
+			}
+
+			response = esClient.admin().indices()
+					.create(new CreateIndexRequest(payloadIndex)).get();
+			if (!response.isAcknowledged()) {
+				System.err.println("Unable to create index " + payloadIndex);
+				return;
 			}
 		} catch (ExecutionException e) {
 			// Ignore IndexAlreadyExistsExceptions
@@ -694,10 +704,19 @@ public class SuggestionIndex {
 	}
 
 	/**
-	 * Must be called every time an search session is finished (suggestion is
+	 * Must be called every time a search session is finished (suggestion is
 	 * selected, timeout or query is deleted)
 	 */
 	public void onSearchSessionFinished(AnalyticsData userData) {
 		statisticsAggregator.onSearchSessionFinished(userData);
+	}
+
+	/**
+	 * Must be called every time a suggestion was selected
+	 */
+	public void onSuggestionSelected(String suggestionID,
+			String suggestionString, AnalyticsData userData) {
+		statisticsAggregator.onSuggestionSelected(suggestionID,
+				suggestionString, userData);
 	}
 }

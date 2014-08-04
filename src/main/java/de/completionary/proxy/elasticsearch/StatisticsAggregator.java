@@ -43,6 +43,8 @@ class StatisticsAggregator {
 
 	private AtomicLong numberOfQueriesThisMonth;
 
+	private static final AnalyticsLogger logger = new AnalyticsLogger();
+
 	public StatisticsAggregator(long indexSize, long numberOfQueriesThisMonth) {
 		this.indexSize = new AtomicLong(indexSize);
 		this.numberOfQueriesThisMonth = new AtomicLong(numberOfQueriesThisMonth);
@@ -54,20 +56,21 @@ class StatisticsAggregator {
 	 */
 	public void onSearchSessionFinished(AnalyticsData userData) {
 		numberOfSearchSessions.incrementAndGet();
+		logger.logSessionFinished(userData);
 	}
 
 	/**
 	 * Must be called every time a suggestion query was run
 	 * 
-	 * @param userID
-	 *            The user session ID of the end user sending the query
+	 * @param userData
+	 *            End user specific analytics data
 	 * @param suggestRequest
 	 *            The string that was completed
 	 * @param suggestions
 	 *            The list of suggestions that was sent back to the client
 	 */
-	public void onQuery(AnalyticsData userData, final String suggestRequest,
-			final List<Suggestion> suggestions) {
+	public void onQuery(final AnalyticsData userData,
+			final String suggestRequest, final List<Suggestion> suggestions) {
 		activeUsers.add(userData.userID);
 		numberOfQueries.incrementAndGet();
 		numberOfQueriesThisMonth.incrementAndGet();
@@ -76,21 +79,31 @@ class StatisticsAggregator {
 			randomSampleOfCurrentCompletedTerms.add(suggestions.get(0)
 					.getSuggestion());
 		}
+
+		logger.logQuery(userData, suggestRequest);
 	}
 
 	/**
 	 * Must be called every time the end user clicks on a suggestion. This
 	 * method counts the number of selected terms and stores a sample of these.
+	 * Additionally this method triggers a onSessionFinished
 	 * 
-	 * @param suggestedString
-	 *            The string that was selected by the end user
+	 * @param suggestionID
+	 *            The ID of the suggestion string that was selected by the end
+	 *            user
+	 * @param suggestionID
+	 *            The suggestion string that was selected by the end user
 	 */
-	public void onSuggestionSelected(final String suggestedString) {
+	public void onSuggestionSelected(final String suggestionID,
+			final String suggestionString, final AnalyticsData userData) {
 		if (ProxyOptions.MAX_NUMBER_OF_SAMPLE_TERMS_IN_STREAM != randomSampleOfCurrentCompletedTerms
 				.size()) {
-			randomSampleOfCurrentCompletedTerms.add(suggestedString);
+			randomSampleOfCurrentCompletedTerms.add(suggestionString);
 		}
 		numberOfSelectedSuggestions.incrementAndGet();
+		numberOfSearchSessions.incrementAndGet();
+
+		logger.logSuggestionSelected(userData, suggestionID);
 	}
 
 	/**
