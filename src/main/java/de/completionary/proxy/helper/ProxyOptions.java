@@ -10,6 +10,8 @@ public class ProxyOptions extends Options {
     public static int STREAMING_SERVER_PORT;
     public static int SUGGESTION_SERVER_PORT;
     
+    public static int MAX_NUMBER_OF_SAMPLE_TERMS_IN_STREAM;
+    
     static {
         try {
             Options.initialize("/etc/completionary/proxyOptions.cfg", MethodHandles.lookup()
