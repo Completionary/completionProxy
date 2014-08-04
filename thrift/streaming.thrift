@@ -23,26 +23,36 @@ exception UnableToConnectToStreamingClientException {
  * average over a time window. The window size is also transferred.
  * 
  * @param numberOfCurrentUsers
- *            how many unique users have been interacting with the api in
- *            the last second
+ *            How many unique users have been interacting with the api
+ *            since the last update
  * @param numberOfQueries
- *            absolute number of queries that have been fulfilled in the
- *            last second
+ *            Absolute number of queries that have been fulfilled since the
+ * 			  last update
  * @param randomSampleOfCurrentCompletedTerms
- *            : A random sample of successfully completed terms
+ *            A random sample of successfully completed terms since the 
+ *			  last update
  * @param numberOfSelectedSuggestions
- *            : absolute number of how many terms have been selected in the
+ *            Absolute number of how many terms have been selected in the
  *            last second
- * @param conversionRate
- *            : relative number of search sessions in which a term has been
- *            selected from the autocompletion
+ * @param numberOfSearchSessions
+ *            Number of search sessions since the last update. A session 
+ * 			  starts with the first click in the suggestion field and ends
+ *			  with the selection of a suggestion or deletion/change of the
+ *			  search string
+ * @param numberOfShownSuggestions
+ *			  Number of suggestions shown since the last update
+ * @param indexSize
+ *			  Number of terms stored in the index
+ * @param numberOfQueriesThisMonth
+ * 			  Number of queries that have been requested since beginning 
+ *			  of the current month 
  */
 struct StreamedStatisticsField {
 	1: int numberOfCurrentUsers;
 	2: int numberOfQueries;
 	3: list<string> randomSampleOfCurrentCompletedTerms;
 	4: int numberOfSelectedSuggestions;
-	5: double conversionRate;
+	5: int numberOfSearchSessions;
 	6: int numberOfShownSuggestions
 	7: long indexSize;
 	8: long numberOfQueriesThisMonth;
