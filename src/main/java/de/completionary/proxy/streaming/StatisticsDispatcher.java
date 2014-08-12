@@ -19,6 +19,8 @@ import org.apache.thrift.transport.TTransportException;
 import StreamingClientService.StreamingClientServiceClient;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
+import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
+import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.streaming.UnableToConnectToStreamingClientException;
 
@@ -225,8 +227,13 @@ public class StatisticsDispatcher extends TimerTask {
 			for (String index : indeces) {
 				StreamedStatisticsField field = retrievedStats.get(index);
 				if (field == null) {
-					field = SuggestionIndex.getIndex(index)
-							.getCurrentStatistics();
+					try {
+                        field = SuggestionIndex.getIndex(index)
+                        		.getCurrentStatistics();
+                    } catch (InvalidIndexNameException | ServerDownException e) {
+                        e.printStackTrace();
+                    }
+					
 					retrievedStats.put(index, field);
 				}
 				streamForClient.put(index, field);

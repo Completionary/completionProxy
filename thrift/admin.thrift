@@ -87,22 +87,22 @@ service AdminService {
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID) throws (1: exceptions.ServerDownException serverDownException);
+	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID) throws (1: exceptions.ServerDownException serverDownException);
+	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Deletes a whole index
 	 */
-	bool deleteIndex(1: string apiToken, 2: string index) throws (1: exceptions.ServerDownException serverDownException);
+	bool deleteIndex(1: string apiToken, 2: string index) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Clears an Index (deletes all fields)
 	 * @return The time in milliseconds spend on the server side
 	 */
-	long truncateIndex(1: string apiToken, 2: string index) throws (1: exceptions.ServerDownException serverDownException);
+	long truncateIndex(1: string apiToken, 2: string index) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 }

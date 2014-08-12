@@ -15,11 +15,13 @@ import java.util.concurrent.TimeUnit;
 import junit.framework.Assert;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
+import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 /**
@@ -28,24 +30,24 @@ import de.completionary.proxy.thrift.services.suggestion.Suggestion;
  */
 public class SuggestionIndexTest {
 
-    private static String index = "";
+    protected String index = "";
 
-    @BeforeClass
-    public static void setUpBeforeClass() {
+    @Before
+    public void setUp() {
         Random r = new Random();
         index = "testindex" + r.nextInt();
     }
 
-    @AfterClass
-    public static void tearDownAfterClass() throws Exception {
-        SuggestionIndex.delete(index);
+    @After
+    public void tearDown() throws Exception {
+        //        SuggestionIndex.delete(index);
     }
 
     private CountDownLatch lock = new CountDownLatch(1);
 
     @Test
     public void Test() throws InterruptedException, ExecutionException,
-            IOException {
+            IOException, InvalidIndexNameException, ServerDownException {
         SuggestionIndex client = SuggestionIndex.getIndex(index);
 
         /*
