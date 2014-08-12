@@ -109,7 +109,7 @@ public class SuggestionIndexTest {
          */
         lock = new CountDownLatch(1);
 
-        client.async_deleteSingleTerm("1", new AsyncMethodCallback<Boolean>() {
+        client.async_deleteSingleTerm(1, new AsyncMethodCallback<Boolean>() {
 
             public void onError(Exception e) {
                 e.printStackTrace();

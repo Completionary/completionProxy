@@ -100,7 +100,11 @@ public class SuggestionIndex {
      *            The ID of the index
      * @return A new Index or null in case of an error
      */
-    public static SuggestionIndex getIndex(final String index) {
+    public static SuggestionIndex getIndex(final String index)
+            throws InvalidIndexNameException, ServerDownException {
+        if (index.equals("")) {
+            throw new InvalidIndexNameException("The index must not be empty");
+        }
         SuggestionIndex instance = indices.get(index);
         if (instance != null) {
             return instance;
@@ -110,8 +114,7 @@ public class SuggestionIndex {
             try {
                 instance = new SuggestionIndex(index);
             } catch (ExecutionException | InterruptedException | IOException e) {
-                e.printStackTrace();
-                return null;
+                throw new ServerDownException(e.getMessage());
             }
             indices.put(index, instance);
         }
@@ -264,11 +267,11 @@ public class SuggestionIndex {
      * @throws IOException
      */
     public void async_deleteSingleTerm(
-            final String ID,
+            final long ID,
             final AsyncMethodCallback<Boolean> listener) throws IOException {
 
         ListenableActionFuture<DeleteResponse> future =
-                esClient.prepareDelete(index, TYPE, ID).setRefresh(true)
+                esClient.prepareDelete(index, TYPE, ""+ID).setRefresh(true)
                         .execute();
 
         future.addListener(new ActionListener<DeleteResponse>() {
