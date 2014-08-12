@@ -242,7 +242,7 @@ public class SuggestionIndex {
 
         ListenableActionFuture<BulkResponse> future =
                 bulkRequest.setRefresh(true).execute();
-        
+
         future.addListener(new ActionListener<BulkResponse>() {
 
             public void onResponse(BulkResponse response) {
@@ -271,7 +271,7 @@ public class SuggestionIndex {
             final AsyncMethodCallback<Boolean> listener) throws IOException {
 
         ListenableActionFuture<DeleteResponse> future =
-                esClient.prepareDelete(index, TYPE, ""+ID).setRefresh(true)
+                esClient.prepareDelete(index, TYPE, "" + ID).setRefresh(true)
                         .execute();
 
         future.addListener(new ActionListener<DeleteResponse>() {
@@ -588,8 +588,9 @@ public class SuggestionIndex {
                             });
                 }
             }
+        } else { // compSuggestion == null
+            callback.onComplete(new ArrayList<Suggestion>(0));
         }
-        callback.onComplete(new ArrayList<Suggestion>(0));
     }
 
     /**

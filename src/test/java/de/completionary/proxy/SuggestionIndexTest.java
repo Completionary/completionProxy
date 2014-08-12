@@ -71,6 +71,8 @@ public class SuggestionIndexTest {
         Assert.assertTrue("async_addSingleTerm has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
 
+        client.waitForGreen();
+        
         /*
          * Find that term
          */
@@ -90,12 +92,13 @@ public class SuggestionIndexTest {
                         Assert.assertNotNull("An Error has occured",
                                 suggestions);
                         results.addAll(suggestions);
+                        System.out.println(suggestions.size()+"!!!!!!!!!!!!");
 
                         lock.countDown();
                     }
                 });
         Assert.assertTrue("async_findSuggestionsFor has timed out",
-                lock.await(200000, TimeUnit.MILLISECONDS));
+                lock.await(200, TimeUnit.MILLISECONDS));
 
         /*
          * Check if we find what we've stored
