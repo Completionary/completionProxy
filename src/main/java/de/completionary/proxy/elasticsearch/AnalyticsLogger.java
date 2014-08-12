@@ -24,57 +24,61 @@ import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
  */
 
 public class AnalyticsLogger {
-	final static Logger logger = LoggerFactory.getLogger(AnalyticsLogger.class);
 
-	public AnalyticsLogger() {
-		logger.info("Entering application.");
-	}
+    final static Logger logger = LoggerFactory.getLogger(AnalyticsLogger.class);
 
-	public void logQuery(final AnalyticsData userData,
-			final String suggestRequest) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("Q\t");
-		builder.append(suggestRequest);
-		builder.append('\t');
-		appendUserData(userData, builder);
+    public AnalyticsLogger() {
+        logger.info("Entering application.");
+    }
 
-		logger.info(builder.toString());
-	}
+    public void logQuery(
+            final AnalyticsData userData,
+            final String suggestRequest) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Q\t");
+        builder.append(suggestRequest);
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-	/**
-	 * 
-	 * @param suggestionID
-	 *            The ID of the selected suggestion
-	 */
-	public void logSuggestionSelected(final AnalyticsData userData,
-			final String suggestionID) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("S\t");
-		builder.append(suggestionID);
-		builder.append('\t');
-		appendUserData(userData, builder);
+        logger.info(builder.toString());
+    }
 
-		logger.info(builder.toString());
-	}
+    /**
+     * 
+     * @param suggestionID
+     *            The ID of the selected suggestion
+     */
+    public void logSuggestionSelected(
+            final AnalyticsData userData,
+            final String suggestionID) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("S\t");
+        builder.append(suggestionID);
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-	/**
-	 * 
-	 * @param suggestionID
-	 *            The ID of the selected suggestion
-	 */
-	public void logSessionFinished(final AnalyticsData userData) {
-		StringBuilder builder = new StringBuilder();
-		builder.append("F\t");
-		builder.append('\t');
-		appendUserData(userData, builder);
+        logger.info(builder.toString());
+    }
 
-		logger.info(builder.toString());
-	}
+    /**
+     * 
+     * @param suggestionID
+     *            The ID of the selected suggestion
+     */
+    public void logSessionFinished(final AnalyticsData userData) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("F\t");
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-	private void appendUserData(final AnalyticsData userData,
-			final StringBuilder builder) {
-		builder.append(userData.userID);
-		builder.append('\t');
-		builder.append(userData.userAgent);
-	}
+        logger.info(builder.toString());
+    }
+
+    private void appendUserData(
+            final AnalyticsData userData,
+            final StringBuilder builder) {
+        builder.append(userData.userID);
+        builder.append('\t');
+        builder.append(userData.userAgent);
+    }
 }
