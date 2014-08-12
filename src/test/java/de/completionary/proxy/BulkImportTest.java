@@ -38,7 +38,7 @@ public class BulkImportTest extends SuggestionIndexTest {
         for (int i = 0; i != numberOfTermsToAdd; i++) {
             String s = UUID.randomUUID().toString();
             SuggestionField field =
-                    new SuggestionField(i + "", s, Arrays.asList(new String[] {
+                    new SuggestionField(i, s, Arrays.asList(new String[] {
                         s
                     }), s, i);
             terms.add(field);
