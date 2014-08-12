@@ -33,6 +33,8 @@ public class SuggestionIndexTest {
 
     protected String index = "";
 
+    protected CountDownLatch lock = new CountDownLatch(1);
+
     @Before
     public void setUp() {
         Random r = new Random();
@@ -43,8 +45,6 @@ public class SuggestionIndexTest {
     public void tearDown() throws Exception {
         SuggestionIndex.delete(index);
     }
-
-    private CountDownLatch lock = new CountDownLatch(1);
 
     @Test
     public void Test() throws InterruptedException, ExecutionException,
@@ -71,41 +71,10 @@ public class SuggestionIndexTest {
         Assert.assertTrue("async_addSingleTerm has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
 
-        client.waitForGreen();
-        
         /*
          * Find that term
          */
-        lock = new CountDownLatch(1);
-
-        final List<Suggestion> results = new ArrayList<Suggestion>();
-        client.async_findSuggestionsFor("b", 10, new AnalyticsData(),
-                new AsyncMethodCallback<List<Suggestion>>() {
-
-                    public void onError(Exception e) {
-                        e.printStackTrace();
-                        Assert.fail("An Error has occured (see above)");
-                        lock.countDown();
-                    }
-
-                    public void onComplete(List<Suggestion> suggestions) {
-                        Assert.assertNotNull("An Error has occured",
-                                suggestions);
-                        results.addAll(suggestions);
-                        System.out.println(suggestions.size()+"!!!!!!!!!!!!");
-
-                        lock.countDown();
-                    }
-                });
-        Assert.assertTrue("async_findSuggestionsFor has timed out",
-                lock.await(200, TimeUnit.MILLISECONDS));
-
-        /*
-         * Check if we find what we've stored
-         */
-        Assert.assertEquals(1, results.size());
-        Assert.assertEquals("output", results.get(0).suggestion);
-        Assert.assertEquals("payload", results.get(0).payload);
+        checkIfEntryIsFound(client, "b", "output", "payload");
 
         /*
          * Delete The term again
@@ -132,10 +101,15 @@ public class SuggestionIndexTest {
         /*
          * Check if it's deleted
          */
+        checkIfEntryIsDeleted(client, "b");
+    }
+
+    void checkIfEntryIsDeleted(SuggestionIndex client, String query)
+            throws InterruptedException {
         lock = new CountDownLatch(1);
 
-        results.clear();
-        client.async_findSuggestionsFor("b", 10, new AnalyticsData(),
+        final List<Suggestion> results = new ArrayList<Suggestion>();
+        client.async_findSuggestionsFor(query, 10, new AnalyticsData(),
                 new AsyncMethodCallback<List<Suggestion>>() {
 
                     public void onError(Exception e) {
@@ -153,5 +127,44 @@ public class SuggestionIndexTest {
         Assert.assertTrue("async_findSuggestionsFor has timed out",
                 lock.await(2000, TimeUnit.MILLISECONDS));
         Assert.assertEquals(0, results.size());
+    }
+
+    /**
+     * Sends a standard completion query and checks if the response contains the
+     * given output and payload
+     */
+    void checkIfEntryIsFound(
+            SuggestionIndex client,
+            String query,
+            String output,
+            String payload) throws InterruptedException {
+        lock = new CountDownLatch(1);
+
+        final List<Suggestion> results = new ArrayList<Suggestion>();
+        client.async_findSuggestionsFor(query, 10, new AnalyticsData(),
+                new AsyncMethodCallback<List<Suggestion>>() {
+
+                    public void onError(Exception e) {
+                        e.printStackTrace();
+                        Assert.fail("An Error has occured (see above)");
+                        lock.countDown();
+                    }
+
+                    public void onComplete(List<Suggestion> suggestions) {
+                        Assert.assertNotNull("An Error has occured",
+                                suggestions);
+                        results.addAll(suggestions);
+                        lock.countDown();
+                    }
+                });
+        Assert.assertTrue("async_findSuggestionsFor has timed out",
+                lock.await(200, TimeUnit.MILLISECONDS));
+
+        /*
+         * Check if we find what we've stored
+         */
+        Assert.assertEquals(1, results.size());
+        Assert.assertEquals(output, results.get(0).suggestion);
+        Assert.assertEquals(payload, results.get(0).payload);
     }
 }

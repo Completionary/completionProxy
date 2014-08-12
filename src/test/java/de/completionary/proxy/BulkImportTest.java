@@ -10,8 +10,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.Assert;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
@@ -44,6 +46,7 @@ public class BulkImportTest extends SuggestionIndexTest {
             terms.add(field);
         }
 
+        lock = new CountDownLatch(1);
         client.async_addTerms(terms, new AsyncMethodCallback<Long>() {
 
             @Override
@@ -53,8 +56,16 @@ public class BulkImportTest extends SuggestionIndexTest {
 
             @Override
             public void onComplete(Long response) {
-                System.out.println("I'ts working!");
+                lock.countDown();
             }
         });
+        Assert.assertTrue("async_addTerms has timed out",
+                lock.await(1000, TimeUnit.SECONDS));
+
+        for (int i = 0; i < 10; i++) {
+            SuggestionField field = terms.get(i);
+            checkIfEntryIsFound(client, field.getOutputField(),
+                    field.getOutputField(), field.getPayload());
+        }
     }
 }
