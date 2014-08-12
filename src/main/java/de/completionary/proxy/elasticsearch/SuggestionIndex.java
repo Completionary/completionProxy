@@ -68,6 +68,8 @@ public class SuggestionIndex {
 
     private static final String SUGGEST_FIELD = "suggest";
 
+    private static final String PAYLOAD_FIELD = "p";
+
     private static final String TYPE = "t";
 
     private static Map<String, SuggestionIndex> indices =
@@ -176,7 +178,9 @@ public class SuggestionIndex {
                             field.weight)));
 
             bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
-                    Long.toString(field.ID)).setSource(field.payload));
+                    Long.toString(field.ID)).setSource(
+                    jsonBuilder().startObject()
+                            .field(PAYLOAD_FIELD, field.payload).endObject()));
         }
 
         ListenableActionFuture<BulkResponse> future =
@@ -229,11 +233,13 @@ public class SuggestionIndex {
                 .setSource(generateFieldJS(inputs, output, ID, weight)));
 
         bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
-                Long.toString(ID)).setSource(payload));
+                Long.toString(ID)).setSource(
+                jsonBuilder().startObject().field(PAYLOAD_FIELD, payload)
+                        .endObject()));
 
         ListenableActionFuture<BulkResponse> future =
                 bulkRequest.setRefresh(true).execute();
-
+        
         future.addListener(new ActionListener<BulkResponse>() {
 
             public void onResponse(BulkResponse response) {
@@ -485,7 +491,15 @@ public class SuggestionIndex {
         future.addListener(new ActionListener<GetResponse>() {
 
             public void onResponse(GetResponse response) {
-                callback.onComplete(response.getSourceAsString());
+                /*
+                 * FIXME: This is so uggly! Isn't there a way to store a string
+                 * as it is and not within a json...
+                 * As an alternative we should at least tune this with something
+                 * like
+                 * response.getSourceAsString().substring(X).substring(0,Y);
+                 */
+                callback.onComplete((String) response.getSourceAsMap().get(
+                        PAYLOAD_FIELD));
             }
 
             public void onFailure(Throwable e) {
@@ -538,9 +552,14 @@ public class SuggestionIndex {
                 for (int i = 0; i != suggestions.length; i++) {
                     final int suggestionNumber = i;
                     CompletionSuggestion.Entry.Option option = options.get(i);
-
-                    suggestions[i].suggestion = option.getText().toString();
-                    suggestions[i].ID = option.getPayloadAsLong();
+                    suggestions[suggestionNumber] =
+                            new Suggestion(option.getText().toString(), ""/*
+                                                                           * empty
+                                                                           * payload
+                                                                           * for
+                                                                           * now
+                                                                           */,
+                                    option.getPayloadAsLong());
 
                     getPayload(option.getPayloadAsLong(),
                             new AsyncMethodCallback<String>() {
