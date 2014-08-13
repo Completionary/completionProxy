@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 import junit.framework.Assert;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,26 +32,34 @@ import de.completionary.proxy.thrift.services.suggestion.Suggestion;
  */
 public class SuggestionIndexTest {
 
-    protected String index = "";
+    static protected CountDownLatch lock = new CountDownLatch(1);
 
-    protected CountDownLatch lock = new CountDownLatch(1);
+    private static List<String> randomIndices = new ArrayList<String>();
 
     @Before
     public void setUp() {
-        Random r = new Random();
-        index = "testindex" + r.nextInt();
         AnalyticsLogger.disableLogging();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        SuggestionIndex.delete(index);
+    public static SuggestionIndex getRandomIndex()
+            throws InvalidIndexNameException, ServerDownException {
+        Random r = new Random();
+        String index = "testindex" + r.nextInt();
+        randomIndices.add(index);
+        return SuggestionIndex.getIndex(index);
+    }
+
+    @AfterClass
+    public static void tearDown() throws Exception {
+        for (String index : randomIndices) {
+            SuggestionIndex.delete(index);
+        }
     }
 
     @Test
     public void Test() throws InterruptedException, ExecutionException,
             IOException, InvalidIndexNameException, ServerDownException {
-        SuggestionIndex client = SuggestionIndex.getIndex(index);
+        SuggestionIndex client = getRandomIndex();
 
         /*
          * Add a term
@@ -108,7 +116,7 @@ public class SuggestionIndexTest {
 
     void checkIfEntryIsDeleted(SuggestionIndex client, String query)
             throws InterruptedException {
-        lock = new CountDownLatch(1);
+        final CountDownLatch lock = new CountDownLatch(1);
 
         final List<Suggestion> results = new ArrayList<Suggestion>();
         client.async_findSuggestionsFor(query, 10, new AnalyticsData(),
@@ -131,25 +139,19 @@ public class SuggestionIndexTest {
         Assert.assertEquals(0, results.size());
     }
 
-    /**
-     * Sends a standard completion query and checks if the response contains the
-     * given output and payload
-     */
-    void checkIfEntryIsFound(
-            SuggestionIndex client,
+    static List<Suggestion> findSuggestionFor(
+            final SuggestionIndex client,
             String query,
-            String output,
-            String payload,
             int timeOutMilliSeconds) throws InterruptedException {
-        lock = new CountDownLatch(1);
+
+        final CountDownLatch lock = new CountDownLatch(1);
 
         final List<Suggestion> results = new ArrayList<Suggestion>();
         client.async_findSuggestionsFor(query, 10, new AnalyticsData(),
                 new AsyncMethodCallback<List<Suggestion>>() {
 
                     public void onError(Exception e) {
-                        e.printStackTrace();
-                        Assert.fail("An Error has occured (see above)");
+                        Assert.fail(e.getLocalizedMessage());
                         lock.countDown();
                     }
 
@@ -162,13 +164,32 @@ public class SuggestionIndexTest {
                 });
         Assert.assertTrue("async_findSuggestionsFor has timed out",
                 lock.await(timeOutMilliSeconds, TimeUnit.MILLISECONDS));
+        return results;
+    }
+
+    /**
+     * Sends a standard completion query and checks if the response contains the
+     * given output and payload
+     */
+    static void checkIfEntryIsFound(
+            SuggestionIndex client,
+            String query,
+            String output,
+            String payload,
+            int timeOutMilliSeconds) throws InterruptedException {
+
+        final List<Suggestion> results =
+                findSuggestionFor(client, query, timeOutMilliSeconds);
 
         if (results.size() > 1) {
-            System.err.println("Searching for " + query);
+            String message =
+                    "Searching for " + query + " Returned multiple results:";
             for (Suggestion s : results) {
-                System.err.println(s.suggestion + ":" + s.payload);
+                message += s.suggestion + ":" + s.payload;
             }
+            Assert.fail(message);
         }
+
         /*
          * Check if we find what we've stored
          */

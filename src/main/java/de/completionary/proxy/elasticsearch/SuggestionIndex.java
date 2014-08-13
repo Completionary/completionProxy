@@ -552,7 +552,7 @@ public class SuggestionIndex {
             }
 
             public void onFailure(Throwable e) {
-                callback.onError(new Exception(e.getMessage()));
+                callback.onError(new ServerDownException(e.getMessage()));
             }
         });
     }
@@ -584,55 +584,63 @@ public class SuggestionIndex {
                 CompletionSuggestion.Entry entry = entryList.get(0);
                 List<CompletionSuggestion.Entry.Option> options =
                         entry.getOptions();
-                /*
-                 * Loop through all suggestions
-                 */
-                // List<Suggestion> suggestions = new ArrayList<Suggestion>(
-                // options.size());
-                final Suggestion[] suggestions = new Suggestion[options.size()];
 
-                /*
-                 * Used to count how many async requests have already been
-                 * responded
-                 */
-                final AtomicInteger remainingRequests =
-                        new AtomicInteger(suggestions.length);
+                if (!options.isEmpty()) {
+                    /*
+                     * Loop through all suggestions
+                     */
+                    // List<Suggestion> suggestions = new ArrayList<Suggestion>(
+                    // options.size());
+                    final Suggestion[] suggestions =
+                            new Suggestion[options.size()];
 
-                for (int i = 0; i != suggestions.length; i++) {
-                    final int suggestionNumber = i;
-                    CompletionSuggestion.Entry.Option option = options.get(i);
-                    suggestions[suggestionNumber] =
-                            new Suggestion(option.getText().toString(), ""/*
-                                                                           * empty
-                                                                           * payload
-                                                                           * for
-                                                                           * now
-                                                                           */,
-                                    option.getPayloadAsLong());
+                    /*
+                     * Used to count how many async requests have already been
+                     * responded
+                     */
+                    final AtomicInteger remainingRequests =
+                            new AtomicInteger(suggestions.length);
 
-                    getPayload(option.getPayloadAsLong(),
-                            new AsyncMethodCallback<String>() {
+                    for (int i = 0; i != suggestions.length; i++) {
+                        final int suggestionNumber = i;
+                        CompletionSuggestion.Entry.Option option =
+                                options.get(i);
+                        suggestions[suggestionNumber] =
+                                new Suggestion(option.getText().toString(),
+                                        ""/*
+                                           * empty
+                                           * payload
+                                           * for
+                                           * now
+                                           */, option.getPayloadAsLong());
 
-                                @Override
-                                public void onError(Exception e) {
-                                    if (remainingRequests.decrementAndGet() == 0) {
-                                        callback.onError(e);
+                        getPayload(option.getPayloadAsLong(),
+                                new AsyncMethodCallback<String>() {
+
+                                    @Override
+                                    public void onError(Exception e) {
+                                        if (remainingRequests.decrementAndGet() == 0) {
+                                            callback.onError(e);
+                                        }
                                     }
-                                }
 
-                                @Override
-                                public void onComplete(String payload) {
-                                    suggestions[suggestionNumber].payload =
-                                            payload;
-
-                                    if (remainingRequests.decrementAndGet() == 0) {
-                                        // the last request is finished
-                                        callback.onComplete(Arrays
-                                                .asList(suggestions));
+                                    @Override
+                                    public void onComplete(String payload) {
+                                        suggestions[suggestionNumber].payload =
+                                                payload;
+                                        if (remainingRequests.decrementAndGet() == 0) {
+                                            // the last request is finished
+                                            callback.onComplete(Arrays
+                                                    .asList(suggestions));
+                                        }
                                     }
-                                }
-                            });
+                                });
+                    }
+                } else {
+                    callback.onComplete(new ArrayList<Suggestion>(0));
                 }
+            } else { // entryList == null
+                callback.onComplete(new ArrayList<Suggestion>(0));
             }
         } else { // compSuggestion == null
             callback.onComplete(new ArrayList<Suggestion>(0));
@@ -645,7 +653,7 @@ public class SuggestionIndex {
      * "completion", "index_analyzer" : "simple", "search_analyzer" : "simple",
      * "payloads" : true }}}}
      * 
-     * @param index
+     * @param randomIndex
      *            ES index the new mapping should be added to
      * @param type
      *            The type of the mapping
@@ -705,7 +713,7 @@ public class SuggestionIndex {
     /**
      * Creates a new ES index if it does not exists yet
      * 
-     * @param index
+     * @param randomIndex
      *            The index to be created
      * @throws ExecutionException
      * @throws InterruptedException
