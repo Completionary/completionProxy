@@ -19,6 +19,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import de.completionary.proxy.elasticsearch.AnalyticsLogger;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
@@ -39,6 +40,7 @@ public class SuggestionIndexTest {
     public void setUp() {
         Random r = new Random();
         index = "testindex" + r.nextInt();
+        AnalyticsLogger.disableLogging();
     }
 
     @After
@@ -69,12 +71,12 @@ public class SuggestionIndexTest {
             }
         });
         Assert.assertTrue("async_addSingleTerm has timed out",
-                lock.await(2000, TimeUnit.MILLISECONDS));
+                lock.await(200, TimeUnit.MILLISECONDS));
 
         /*
          * Find that term
          */
-        checkIfEntryIsFound(client, "b", "output", "payload");
+        checkIfEntryIsFound(client, "b", "output", "payload", 200);
 
         /*
          * Delete The term again
@@ -96,7 +98,7 @@ public class SuggestionIndexTest {
         });
 
         Assert.assertTrue("async_deleteSingleTerm has timed out",
-                lock.await(200000, TimeUnit.MILLISECONDS));
+                lock.await(200, TimeUnit.MILLISECONDS));
 
         /*
          * Check if it's deleted
@@ -125,7 +127,7 @@ public class SuggestionIndexTest {
                     }
                 });
         Assert.assertTrue("async_findSuggestionsFor has timed out",
-                lock.await(2000, TimeUnit.MILLISECONDS));
+                lock.await(200, TimeUnit.MILLISECONDS));
         Assert.assertEquals(0, results.size());
     }
 
@@ -137,7 +139,8 @@ public class SuggestionIndexTest {
             SuggestionIndex client,
             String query,
             String output,
-            String payload) throws InterruptedException {
+            String payload,
+            int timeOutMilliSeconds) throws InterruptedException {
         lock = new CountDownLatch(1);
 
         final List<Suggestion> results = new ArrayList<Suggestion>();
@@ -158,8 +161,14 @@ public class SuggestionIndexTest {
                     }
                 });
         Assert.assertTrue("async_findSuggestionsFor has timed out",
-                lock.await(200, TimeUnit.MILLISECONDS));
+                lock.await(timeOutMilliSeconds, TimeUnit.MILLISECONDS));
 
+        if (results.size() > 1) {
+            System.err.println("Searching for " + query);
+            for (Suggestion s : results) {
+                System.err.println(s.suggestion + ":" + s.payload);
+            }
+        }
         /*
          * Check if we find what we've stored
          */

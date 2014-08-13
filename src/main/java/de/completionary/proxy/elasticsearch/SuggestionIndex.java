@@ -14,8 +14,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import junit.framework.Assert;
-
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
 import org.elasticsearch.action.ListenableActionFuture;
@@ -41,6 +39,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
+import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
@@ -71,6 +70,8 @@ public class SuggestionIndex {
     private static final String PAYLOAD_FIELD = "p";
 
     private static final String TYPE = "t";
+
+    private static final String index_and_search_analyzer = "whitespace";
 
     private static Map<String, SuggestionIndex> indices =
             new TreeMap<String, SuggestionIndex>();
@@ -125,7 +126,7 @@ public class SuggestionIndex {
             String indexID) throws ExecutionException, InterruptedException,
             IOException {
         this.index = indexID;
-        this.payloadIndex = indexID + "-payload";
+        this.payloadIndex = generatePayloadIndex(indexID);
 
         /*
          * Create the ES index if it does not exist yet
@@ -172,9 +173,34 @@ public class SuggestionIndex {
     public void async_addTerms(
             final List<SuggestionField> terms,
             final AsyncMethodCallback<Long> listener) throws IOException {
+        async_addTerms(terms, 0, 0, listener);
+    }
+
+    /**
+     * This is a recursive method limiting the maximum number of add requests
+     * within one bulkRequest
+     * 
+     * @param terms
+     * @param startPos
+     * @param timeMillis
+     * @param listener
+     * @throws IOException
+     */
+    public void async_addTerms(
+            final List<SuggestionField> terms,
+            final int startPos,
+            final long timeMillis,
+            final AsyncMethodCallback<Long> listener) throws IOException {
+
+        final int endPos =
+                Math.min(terms.size(), startPos
+                        + ProxyOptions.SPLIT_BULK_REQUEST_SIZE);
 
         BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-        for (SuggestionField field : terms) {
+
+        for (int i = startPos; i != endPos; i++) {
+            SuggestionField field = terms.get(i);
+
             bulkRequest.add(esClient.prepareIndex(index, TYPE,
                     Long.toString(field.ID)).setSource(
                     generateFieldJS(field.input, field.outputField, field.ID,
@@ -189,16 +215,36 @@ public class SuggestionIndex {
         ListenableActionFuture<BulkResponse> future =
                 bulkRequest.setRefresh(true).execute();
 
-        future.addListener(new ActionListener<BulkResponse>() {
+        if (endPos != terms.size()) {
+            /*
+             * Start recursive call of this method
+             */
+            future.addListener(new ActionListener<BulkResponse>() {
 
-            public void onResponse(BulkResponse response) {
-                listener.onComplete(response.getTookInMillis());
-            }
+                public void onResponse(BulkResponse response) {
+                    try {
+                        async_addTerms(terms, endPos, timeMillis, listener);
+                    } catch (IOException e) {
+                        listener.onError(new Exception(e.getMessage()));
+                    }
+                }
 
-            public void onFailure(Throwable e) {
-                listener.onError(new Exception(e.getMessage()));
-            }
-        });
+                public void onFailure(Throwable e) {
+                    listener.onError(new Exception(e.getMessage()));
+                }
+            });
+        } else {
+            future.addListener(new ActionListener<BulkResponse>() {
+
+                public void onResponse(BulkResponse response) {
+                    listener.onComplete(response.getTookInMillis());
+                }
+
+                public void onFailure(Throwable e) {
+                    listener.onError(new Exception(e.getMessage()));
+                }
+            });
+        }
     }
 
     /**
@@ -614,8 +660,8 @@ public class SuggestionIndex {
                         .startObject("properties").startObject("name")
                         .field("type", "string").endObject()
                         .startObject(SUGGEST_FIELD).field("type", "completion")
-                        .field("index_analyzer", "simple")
-                        .field("search_analyzer", "simple")
+                        .field("index_analyzer", index_and_search_analyzer)
+                        .field("search_analyzer", index_and_search_analyzer)
                         .field("payloads", true).endObject().endObject()
                         .endObject().endObject();
 
@@ -701,10 +747,14 @@ public class SuggestionIndex {
      */
     public static void delete(final String index) throws InterruptedException,
             ExecutionException {
-        final DeleteIndexRequest deleteIndexRequest =
-                new DeleteIndexRequest(index);
         try {
-            esClient.admin().indices().delete(deleteIndexRequest).get();
+            esClient.admin().indices().delete(new DeleteIndexRequest(index))
+                    .get();
+
+            esClient.admin()
+                    .indices()
+                    .delete(new DeleteIndexRequest(generatePayloadIndex(index)))
+                    .get();
         } catch (ExecutionException e) {
             // Ignore IndexMissingException
             if (!((e.getCause().getCause()) instanceof IndexMissingException)) {
@@ -857,7 +907,7 @@ public class SuggestionIndex {
                 .setWaitForGreenStatus().execute().actionGet();
     }
 
-    private void expungeDeletes() {
+    public void optimize() {
         esClient.admin().indices().prepareOptimize(index)
                 .setOnlyExpungeDeletes(true).setWaitForMerge(true).execute()
                 .actionGet();
@@ -894,5 +944,9 @@ public class SuggestionIndex {
             AnalyticsData userData) {
         statisticsAggregator.onSuggestionSelected(suggestionID,
                 suggestionString, userData);
+    }
+
+    public static String generatePayloadIndex(String index) {
+        return index + "-payload";
     }
 }

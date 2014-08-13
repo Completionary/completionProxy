@@ -25,22 +25,34 @@ import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 
 public class AnalyticsLogger {
 
+    private static boolean isActive = true;
+
     final static Logger logger = LoggerFactory.getLogger(AnalyticsLogger.class);
 
     public AnalyticsLogger() {
         logger.info("Entering application.");
     }
 
+    public static void disableLogging() {
+        isActive = false;
+    }
+
+    public static void reenableLoggin() {
+        isActive = true;
+    }
+
     public void logQuery(
             final AnalyticsData userData,
             final String suggestRequest) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("Q\t");
-        builder.append(suggestRequest);
-        builder.append('\t');
-        appendUserData(userData, builder);
+        if (isActive) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("Q\t");
+            builder.append(suggestRequest);
+            builder.append('\t');
+            appendUserData(userData, builder);
 
-        logger.info(builder.toString());
+            logger.info(builder.toString());
+        }
     }
 
     /**
@@ -51,13 +63,15 @@ public class AnalyticsLogger {
     public void logSuggestionSelected(
             final AnalyticsData userData,
             final String suggestionID) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("S\t");
-        builder.append(suggestionID);
-        builder.append('\t');
-        appendUserData(userData, builder);
+        if (isActive) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("S\t");
+            builder.append(suggestionID);
+            builder.append('\t');
+            appendUserData(userData, builder);
 
-        logger.info(builder.toString());
+            logger.info(builder.toString());
+        }
     }
 
     /**
@@ -66,19 +80,23 @@ public class AnalyticsLogger {
      *            The ID of the selected suggestion
      */
     public void logSessionFinished(final AnalyticsData userData) {
-        StringBuilder builder = new StringBuilder();
-        builder.append("F\t");
-        builder.append('\t');
-        appendUserData(userData, builder);
+        if (isActive) {
+            StringBuilder builder = new StringBuilder();
+            builder.append("F\t");
+            builder.append('\t');
+            appendUserData(userData, builder);
 
-        logger.info(builder.toString());
+            logger.info(builder.toString());
+        }
     }
 
     private void appendUserData(
             final AnalyticsData userData,
             final StringBuilder builder) {
-        builder.append(userData.userID);
-        builder.append('\t');
-        builder.append(userData.userAgent);
+        if (isActive) {
+            builder.append(userData.userID);
+            builder.append('\t');
+            builder.append(userData.userAgent);
+        }
     }
 }
