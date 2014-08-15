@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -25,8 +24,6 @@ import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
  */
 public class BulkImportTest extends SuggestionIndexTest {
 
-    private CountDownLatch lock = new CountDownLatch(1);
-
     @Test
     public void Test() throws InterruptedException, ExecutionException,
             IOException, InvalidIndexNameException, ServerDownException {
@@ -38,7 +35,7 @@ public class BulkImportTest extends SuggestionIndexTest {
         for (int i = 0; i != numberOfTermsToAdd; i++) {
             String s = UUID.randomUUID().toString();
             SuggestionField field =
-                    new SuggestionField(i + "", s, Arrays.asList(new String[] {
+                    new SuggestionField(i, s, Arrays.asList(new String[] {
                         s
                     }), s, i);
             terms.add(field);

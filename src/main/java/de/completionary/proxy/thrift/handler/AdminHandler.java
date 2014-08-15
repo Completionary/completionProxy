@@ -19,7 +19,7 @@ public class AdminHandler implements AdminService.AsyncIface {
     public void addSingleTerm(
             String apiToken,
             String index,
-            String ID,
+            long ID,
             List<String> inputs,
             String output,
             String payload,
@@ -90,7 +90,7 @@ public class AdminHandler implements AdminService.AsyncIface {
     public void deleteSingleTerm(
             String apiToken,
             String index,
-            String ID,
+            long ID,
             final AsyncMethodCallback resultHandler)
             throws InvalidIndexNameException, ServerDownException {
         try {
@@ -116,7 +116,7 @@ public class AdminHandler implements AdminService.AsyncIface {
     public void deleteTerms(
             String apiToken,
             String index,
-            List<String> IDs,
+            List<Long> IDs,
             final AsyncMethodCallback resultHandler)
             throws InvalidIndexNameException, ServerDownException {
         try {

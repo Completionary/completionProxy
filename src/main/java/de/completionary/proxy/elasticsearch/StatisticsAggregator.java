@@ -8,8 +8,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
+import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
+import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 /**
@@ -21,40 +25,86 @@ import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 class StatisticsAggregator {
 
 	/*
-	 * The completion index this aggregator stores statistics of
+	 * List of the active users during the current aggregation priod (1s)
 	 */
-	private int numberOfCurrentUsers = 0;
+	private Set<Long> activeUsers = new TreeSet<Long>();
 
-	private int numberOfQueries = 0;
+	private AtomicInteger numberOfQueries = new AtomicInteger(0);
 
 	private Set<String> randomSampleOfCurrentCompletedTerms = new TreeSet<String>();
 
-	private int numberOfSelectedSuggestions = 0;
+	private AtomicInteger numberOfSelectedSuggestions = new AtomicInteger(0);
 
-	private double conversionRate = 1.0;
+	private AtomicInteger numberOfSearchSessions = new AtomicInteger(0);
 
-	private int numberOfShownSuggestions = 0;
+	private AtomicInteger numberOfShownSuggestions = new AtomicInteger(0);
 
-	public StatisticsAggregator() {
+	private AtomicLong indexSize;
+
+	private AtomicLong numberOfQueriesThisMonth;
+
+	public StatisticsAggregator(long indexSize, long numberOfQueriesThisMonth) {
+		this.indexSize = new AtomicLong(indexSize);
+		this.numberOfQueriesThisMonth = new AtomicLong(numberOfQueriesThisMonth);
+	}
+
+	/**
+	 * Must be called every time an search session is finished (suggestion is
+	 * selected, timeout or query is deleted)
+	 */
+	public void onSearchSessionFinished(AnalyticsData userData) {
+		numberOfSearchSessions.incrementAndGet();
 	}
 
 	/**
 	 * Must be called every time a suggestion query was run
 	 * 
+	 * @param userID
+	 *            The user session ID of the end user sending the query
 	 * @param suggestRequest
 	 *            The string that was completed
 	 * @param suggestions
 	 *            The list of suggestions that was sent back to the client
 	 */
-	public void onQuery(final String suggestRequest,
+	public void onQuery(AnalyticsData userData, final String suggestRequest,
 			final List<Suggestion> suggestions) {
-
-		numberOfQueries++;
+		activeUsers.add(userData.userID);
+		numberOfQueries.incrementAndGet();
+		numberOfQueriesThisMonth.incrementAndGet();
 		if (!suggestions.isEmpty()) {
-			numberOfShownSuggestions += suggestions.size();
+			numberOfShownSuggestions.addAndGet(suggestions.size());
 			randomSampleOfCurrentCompletedTerms.add(suggestions.get(0)
 					.getSuggestion());
 		}
+	}
+
+	/**
+	 * Must be called every time the end user clicks on a suggestion. This
+	 * method counts the number of selected terms and stores a sample of these.
+	 * 
+	 * @param suggestedString
+	 *            The string that was selected by the end user
+	 */
+	public void onSuggestionSelected(final String suggestedString) {
+		if (ProxyOptions.MAX_NUMBER_OF_SAMPLE_TERMS_IN_STREAM != randomSampleOfCurrentCompletedTerms
+				.size()) {
+			randomSampleOfCurrentCompletedTerms.add(suggestedString);
+		}
+		numberOfSelectedSuggestions.incrementAndGet();
+	}
+
+	/**
+	 * Must be called every time a new term was added to the index
+	 */
+	public void onTermAdded() {
+		indexSize.incrementAndGet();
+	}
+
+	/**
+	 * Must be called every time a term was deleted from the index
+	 */
+	public void onTermDeleted() {
+		indexSize.decrementAndGet();
 	}
 
 	/**
@@ -64,10 +114,11 @@ class StatisticsAggregator {
 	 */
 	public StreamedStatisticsField getCurrentStatistics() {
 		StreamedStatisticsField result = new StreamedStatisticsField(
-				numberOfCurrentUsers, numberOfQueries, new ArrayList<String>(
-						randomSampleOfCurrentCompletedTerms),
-				numberOfSelectedSuggestions, conversionRate,
-				numberOfShownSuggestions);
+				activeUsers.size(), numberOfQueries.get(),
+				new ArrayList<String>(randomSampleOfCurrentCompletedTerms),
+				numberOfSelectedSuggestions.get(),
+				numberOfSearchSessions.get(), numberOfShownSuggestions.get(),
+				indexSize.get(), numberOfQueriesThisMonth.get());
 		reset();
 		return result;
 	}
@@ -76,11 +127,11 @@ class StatisticsAggregator {
 	 * Resets all statistics values
 	 */
 	private void reset() {
-		numberOfCurrentUsers = 0;
-		numberOfQueries = 0;
-		randomSampleOfCurrentCompletedTerms = new TreeSet<String>();
-		numberOfSelectedSuggestions = 0;
-		conversionRate = 1.0;
-		numberOfShownSuggestions = 0;
+		activeUsers.clear();
+		numberOfQueries.set(0);
+		randomSampleOfCurrentCompletedTerms.clear();
+		numberOfSelectedSuggestions.set(0);
+		numberOfSearchSessions.set(0);
+		numberOfShownSuggestions.set(0);
 	}
 }

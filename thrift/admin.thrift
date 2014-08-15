@@ -30,7 +30,7 @@ typedef i64 long
  *            Weight of the term
  */
 struct SuggestionField {
-	1: string ID;
+	1: long ID;
 	// May be null
 	2: string outputField;
 	// Required
@@ -72,7 +72,7 @@ service AdminService {
 	long addSingleTerm(
 			1: string apiToken,
 			2: string index,
-			3: string ID,
+			3: long ID,
 			4: list<string> inputs,
 			5: string outputField,
 			6: string payload,
@@ -87,13 +87,13 @@ service AdminService {
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: string ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
+	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: long ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string apiToken, 2: string index, 3: list<string> ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
+	long deleteTerms(1: string apiToken, 2: string index, 3: list<long> ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
 
 	/**
 	 * Deletes a whole index

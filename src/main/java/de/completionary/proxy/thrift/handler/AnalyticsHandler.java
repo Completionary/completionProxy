@@ -17,8 +17,9 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
             short k,
             AsyncMethodCallback/* <List<SuggestionField> > */resultHandler)
             throws TException {
+     // TODO Auto-generated method stub
         List<SuggestionField> l = new ArrayList<SuggestionField>();
-        l.add(new SuggestionField("ID1", "output string", Arrays
+        l.add(new SuggestionField(1, "output string", Arrays
                 .asList(new String[] {
                     "output", "string"
                 }), "payload", 1));

@@ -22,6 +22,7 @@ import org.junit.Test;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
+import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 /**
@@ -53,7 +54,7 @@ public class SuggestionIndexTest {
         /*
          * Add a term
          */
-        client.async_addSingleTerm("1", Arrays.asList(new String[] {
+        client.async_addSingleTerm(1, Arrays.asList(new String[] {
             "bla", "blub"
         }), "output", "payload", 1, new AsyncMethodCallback<Long>() {
 
@@ -76,7 +77,7 @@ public class SuggestionIndexTest {
         lock = new CountDownLatch(1);
 
         final List<Suggestion> results = new ArrayList<Suggestion>();
-        client.async_findSuggestionsFor("b", 10,
+        client.async_findSuggestionsFor("b", 10, new AnalyticsData(),
                 new AsyncMethodCallback<List<Suggestion>>() {
 
                     public void onError(Exception e) {
@@ -108,7 +109,7 @@ public class SuggestionIndexTest {
          */
         lock = new CountDownLatch(1);
 
-        client.async_deleteSingleTerm("1", new AsyncMethodCallback<Boolean>() {
+        client.async_deleteSingleTerm(1, new AsyncMethodCallback<Boolean>() {
 
             public void onError(Exception e) {
                 e.printStackTrace();
@@ -131,7 +132,7 @@ public class SuggestionIndexTest {
         lock = new CountDownLatch(1);
 
         results.clear();
-        client.async_findSuggestionsFor("b", 10,
+        client.async_findSuggestionsFor("b", 10, new AnalyticsData(),
                 new AsyncMethodCallback<List<Suggestion>>() {
 
                     public void onError(Exception e) {
