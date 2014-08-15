@@ -12,7 +12,9 @@ public class ProxyOptions extends Options {
 
     public static int STREAMING_SERVER_PORT;
 
-    public static int SUGGESTION_SERVER_PORT;
+    public static int SUGGESTION_SERVER_BINARY_PORT;
+    
+    public static int SUGGESTION_SERVER_HTTP_PORT;
 
     /*
      * Large bulk imports should be split into several bulk requests with the

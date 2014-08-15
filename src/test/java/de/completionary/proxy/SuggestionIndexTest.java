@@ -37,7 +37,7 @@ public class SuggestionIndexTest {
     private static List<String> randomIndices = new ArrayList<String>();
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         AnalyticsLogger.disableLogging();
     }
 
@@ -50,7 +50,7 @@ public class SuggestionIndexTest {
     }
 
     @AfterClass
-    public static void tearDown() throws Exception {
+    public static void tearDownAfterClass() throws Exception {
         for (String index : randomIndices) {
             SuggestionIndex.delete(index);
         }

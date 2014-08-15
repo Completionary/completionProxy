@@ -223,7 +223,9 @@ public class SuggestionIndex {
 
                 public void onResponse(BulkResponse response) {
                     try {
-                        async_addTerms(terms, endPos, timeMillis, listener);
+                        async_addTerms(terms, endPos,
+                                timeMillis + response.getTookInMillis(),
+                                listener);
                     } catch (IOException e) {
                         listener.onError(new Exception(e.getMessage()));
                     }
@@ -237,7 +239,7 @@ public class SuggestionIndex {
             future.addListener(new ActionListener<BulkResponse>() {
 
                 public void onResponse(BulkResponse response) {
-                    listener.onComplete(response.getTookInMillis());
+                    listener.onComplete(timeMillis + response.getTookInMillis());
                 }
 
                 public void onFailure(Throwable e) {
@@ -317,8 +319,8 @@ public class SuggestionIndex {
             final AsyncMethodCallback<Boolean> listener) throws IOException {
 
         ListenableActionFuture<DeleteResponse> future =
-                esClient.prepareDelete(index, TYPE, Long.toString(ID)).setRefresh(true)
-                        .execute();
+                esClient.prepareDelete(index, TYPE, Long.toString(ID))
+                        .setRefresh(true).execute();
 
         future.addListener(new ActionListener<DeleteResponse>() {
 
@@ -353,7 +355,8 @@ public class SuggestionIndex {
 
         BulkRequestBuilder bulkRequest = esClient.prepareBulk();
         for (Long ID : IDs) {
-            bulkRequest.add(esClient.prepareDelete(index, TYPE, Long.toString(ID)));
+            bulkRequest.add(esClient.prepareDelete(index, TYPE,
+                    Long.toString(ID)));
         }
 
         ListenableActionFuture<BulkResponse> future =
