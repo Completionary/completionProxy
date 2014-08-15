@@ -17,7 +17,7 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
             short k,
             AsyncMethodCallback/* <List<SuggestionField> > */resultHandler)
             throws TException {
-     // TODO Auto-generated method stub
+        // TODO Auto-generated method stub
         List<SuggestionField> l = new ArrayList<SuggestionField>();
         l.add(new SuggestionField(1, "output string", Arrays
                 .asList(new String[] {
@@ -31,13 +31,13 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
             String index,
             AsyncMethodCallback resultHandler) throws TException {
         // TODO Auto-generated method stub
-        
+
     }
 
     @Override
     public void getIndexSize(String index, AsyncMethodCallback resultHandler)
             throws TException {
         // TODO Auto-generated method stub
-        
+
     }
 }

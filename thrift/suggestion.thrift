@@ -16,10 +16,13 @@ typedef i64 long
  *			  Additional data stored with this suggestion term. The standard
  *			  format is the following JSON:
  *            {"href":"$URL","image":"$URL_or_BASE64Image"}
+ * @param ID
+ *			  The unique ID identifying the suggestion
  */
 struct Suggestion {
 	1: string suggestion;
 	2: string payload;
+	3: long ID
 }
 
 /*
@@ -52,5 +55,26 @@ service SuggestionService {
 	 */
 	list<Suggestion> findSuggestionsFor(1: string index, 2: string query, 3: short numberOfSuggestions, 4: AnalyticsData userData);
 	
+	/**
+	 * Informs the analytics service that a search session finished. This means
+	 * that the end user stopped typing or deleted the search string without 
+	 * selecting a suggestion. This must not be called if onSuggestionSelected 
+	 * is called
+	 * 
+	 * @param suggestionID
+	 *            The ID of the selected suggestion
+	 * @param suggestionString
+	 *            The suggested string that was selected
+	 */
 	oneway void onSearchSessionFinished(1: string index, 2: AnalyticsData userData);
+	
+	/**
+	 * Informs the analytics service that a suggestion was selected by the end user
+	 * 
+	 * @param suggestionID
+	 *            The ID of the selected suggestion
+	 * @param suggestionString
+	 *            The suggested string that was selected
+	 */
+	oneway void onSuggestionSelected(1: string index, 2: string suggestionID, 3: string suggestionString,  4: AnalyticsData userData);
 }

@@ -72,6 +72,5 @@ public class AdminServerTest {
         client.addSingleTerm("", index, 1, Arrays.asList(new String[] {
             "bla", "blub"
         }), "bla blub", "payload", 3);
-
     }
 }

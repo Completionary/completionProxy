@@ -5,10 +5,14 @@ import static org.elasticsearch.node.NodeBuilder.nodeBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
@@ -24,7 +28,7 @@ import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.count.CountResponse;
 import org.elasticsearch.action.delete.DeleteResponse;
-import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
@@ -35,6 +39,7 @@ import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 
+import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
@@ -49,6 +54,8 @@ public class SuggestionIndex {
      */
     private final String index;
 
+    private final String payloadIndex;
+
     private final StatisticsAggregator statisticsAggregator;
 
     private static Client esClient = null;
@@ -60,7 +67,11 @@ public class SuggestionIndex {
 
     private static final String SUGGEST_FIELD = "suggest";
 
+    private static final String PAYLOAD_FIELD = "p";
+
     private static final String TYPE = "t";
+
+    private static final String index_and_search_analyzer = "whitespace";
 
     private static Map<String, SuggestionIndex> indices =
             new TreeMap<String, SuggestionIndex>();
@@ -89,8 +100,6 @@ public class SuggestionIndex {
      * @param index
      *            The ID of the index
      * @return A new Index or null in case of an error
-     * @throws InvalidIndexNameException
-     * @throws ServerDownException
      */
     public static SuggestionIndex getIndex(final String index)
             throws InvalidIndexNameException, ServerDownException {
@@ -117,6 +126,7 @@ public class SuggestionIndex {
             String indexID) throws ExecutionException, InterruptedException,
             IOException {
         this.index = indexID;
+        this.payloadIndex = generatePayloadIndex(indexID);
 
         /*
          * Create the ES index if it does not exist yet
@@ -163,28 +173,78 @@ public class SuggestionIndex {
     public void async_addTerms(
             final List<SuggestionField> terms,
             final AsyncMethodCallback<Long> listener) throws IOException {
+        async_addTerms(terms, 0, 0, listener);
+    }
+
+    /**
+     * This is a recursive method limiting the maximum number of add requests
+     * within one bulkRequest
+     * 
+     * @param terms
+     * @param startPos
+     * @param timeMillis
+     * @param listener
+     * @throws IOException
+     */
+    public void async_addTerms(
+            final List<SuggestionField> terms,
+            final int startPos,
+            final long timeMillis,
+            final AsyncMethodCallback<Long> listener) throws IOException {
+
+        final int endPos =
+                Math.min(terms.size(), startPos
+                        + ProxyOptions.SPLIT_BULK_REQUEST_SIZE);
 
         BulkRequestBuilder bulkRequest = esClient.prepareBulk();
-        for (SuggestionField field : terms) {
+
+        for (int i = startPos; i != endPos; i++) {
+            SuggestionField field = terms.get(i);
+
             bulkRequest.add(esClient.prepareIndex(index, TYPE,
                     Long.toString(field.ID)).setSource(
-                    generateFieldJS(field.input, field.outputField,
-                            field.payload, field.weight)));
+                    generateFieldJS(field.input, field.outputField, field.ID,
+                            field.weight)));
+
+            bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
+                    Long.toString(field.ID)).setSource(
+                    jsonBuilder().startObject()
+                            .field(PAYLOAD_FIELD, field.payload).endObject()));
         }
 
         ListenableActionFuture<BulkResponse> future =
                 bulkRequest.setRefresh(true).execute();
 
-        future.addListener(new ActionListener<BulkResponse>() {
+        if (endPos != terms.size()) {
+            /*
+             * Start recursive call of this method
+             */
+            future.addListener(new ActionListener<BulkResponse>() {
 
-            public void onResponse(BulkResponse response) {
-                listener.onComplete(response.getTookInMillis());
-            }
+                public void onResponse(BulkResponse response) {
+                    try {
+                        async_addTerms(terms, endPos, timeMillis, listener);
+                    } catch (IOException e) {
+                        listener.onError(new Exception(e.getMessage()));
+                    }
+                }
 
-            public void onFailure(Throwable e) {
-                listener.onError(new Exception(e.getMessage()));
-            }
-        });
+                public void onFailure(Throwable e) {
+                    listener.onError(new Exception(e.getMessage()));
+                }
+            });
+        } else {
+            future.addListener(new ActionListener<BulkResponse>() {
+
+                public void onResponse(BulkResponse response) {
+                    listener.onComplete(response.getTookInMillis());
+                }
+
+                public void onFailure(Throwable e) {
+                    listener.onError(new Exception(e.getMessage()));
+                }
+            });
+        }
     }
 
     /**
@@ -217,25 +277,28 @@ public class SuggestionIndex {
             final int weight,
             final AsyncMethodCallback<Long> listener) throws IOException {
 
-        ListenableActionFuture<IndexResponse> future =
-                esClient.prepareIndex(index, TYPE, Long.toString(ID))
-                        .setSource(
-                                generateFieldJS(inputs, output, payload, weight))
-                        .setRefresh(true).execute();
+        BulkRequestBuilder bulkRequest = esClient.prepareBulk();
+        bulkRequest.add(esClient.prepareIndex(index, TYPE, Long.toString(ID))
+                .setSource(generateFieldJS(inputs, output, ID, weight)));
 
-        final long start = System.currentTimeMillis();
+        bulkRequest.add(esClient.prepareIndex(payloadIndex, TYPE,
+                Long.toString(ID)).setSource(
+                jsonBuilder().startObject().field(PAYLOAD_FIELD, payload)
+                        .endObject()));
 
-        future.addListener(new ActionListener<IndexResponse>() {
+        ListenableActionFuture<BulkResponse> future =
+                bulkRequest.setRefresh(true).execute();
 
-            public void onResponse(IndexResponse response) {
-                listener.onComplete(System.currentTimeMillis() - start);
+        future.addListener(new ActionListener<BulkResponse>() {
+
+            public void onResponse(BulkResponse response) {
+                listener.onComplete(response.getTookInMillis());
             }
 
             public void onFailure(Throwable e) {
                 listener.onError(new Exception(e.getMessage()));
             }
         });
-
     }
 
     /**
@@ -254,8 +317,8 @@ public class SuggestionIndex {
             final AsyncMethodCallback<Boolean> listener) throws IOException {
 
         ListenableActionFuture<DeleteResponse> future =
-                esClient.prepareDelete(index, TYPE, Long.toString(ID))
-                        .setRefresh(true).execute();
+                esClient.prepareDelete(index, TYPE, Long.toString(ID)).setRefresh(true)
+                        .execute();
 
         future.addListener(new ActionListener<DeleteResponse>() {
 
@@ -290,7 +353,7 @@ public class SuggestionIndex {
 
         BulkRequestBuilder bulkRequest = esClient.prepareBulk();
         for (Long ID : IDs) {
-            bulkRequest.add(esClient.prepareDelete(index, TYPE, ID.toString()));
+            bulkRequest.add(esClient.prepareDelete(index, TYPE, Long.toString(ID)));
         }
 
         ListenableActionFuture<BulkResponse> future =
@@ -319,7 +382,7 @@ public class SuggestionIndex {
     private XContentBuilder generateFieldJS(
             final List<String> inputs,
             final String output,
-            final String payload,
+            final long payloadID,
             final int weight) throws IOException {
         String name = output;
         if (name == null) {
@@ -339,7 +402,7 @@ public class SuggestionIndex {
         if (output != null) {
             b.field("output", output);
         }
-        b.field("payload", payload).field("weight", weight).endObject()
+        b.field("payload", payloadID).field("weight", weight).endObject()
                 .endObject();
         return b;
     }
@@ -369,15 +432,31 @@ public class SuggestionIndex {
                 esClient.prepareSuggest(index).addSuggestion(compBuilder)
                         .execute();
 
+        /*
+         * Async AS request finding suggestions
+         */
         future.addListener(new ActionListener<SuggestResponse>() {
 
             public void onResponse(SuggestResponse response) {
-                List<Suggestion> suggestions =
-                        generateSuggestionsFromESResponse(response, size);
-                listener.onComplete(suggestions);
+                /*
+                 * Async requests getting payload data
+                 */
+                generateSuggestionsFromESResponse(response, size,
+                        new AsyncMethodCallback<List<Suggestion>>() {
 
-                statisticsAggregator.onQuery(userData, suggestRequest,
-                        suggestions);
+                            @Override
+                            public void
+                                onComplete(List<Suggestion> suggestions) {
+                                listener.onComplete(suggestions);
+                                statisticsAggregator.onQuery(userData,
+                                        suggestRequest, suggestions);
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                listener.onError(e);
+                            }
+                        });
             }
 
             public void onFailure(Throwable e) {
@@ -398,7 +477,7 @@ public class SuggestionIndex {
     public List<Suggestion> findSuggestionsFor(
             final String suggestRequest,
             final int size,
-            final AnalyticsData userData) {
+            final AnalyticsData userData) throws ServerDownException {
 
         CompletionSuggestionBuilder compBuilder =
                 new CompletionSuggestionBuilder(SUGGEST_FIELD).field(
@@ -409,11 +488,73 @@ public class SuggestionIndex {
 
         SuggestResponse response = suggestRequestBuilder.execute().actionGet();
 
-        List<Suggestion> suggestions =
-                generateSuggestionsFromESResponse(response, size);
-        statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
+        /*
+         * Call the async function generateSuggestionsFromESResponse and
+         * synchronize it
+         */
+        final CountDownLatch lock = new CountDownLatch(1);
 
+        final List<Suggestion> suggestions = new ArrayList<Suggestion>();
+        generateSuggestionsFromESResponse(response, size,
+                new AsyncMethodCallback<List<Suggestion>>() {
+
+                    @Override
+                    public void onComplete(List<Suggestion> s) {
+                        suggestions.addAll(s);
+                        lock.countDown();
+                    }
+
+                    @Override
+                    public void onError(Exception arg0) {
+                        arg0.printStackTrace();
+                        lock.countDown();
+                    }
+                });
+
+        try {
+            if (!lock.await(2000, TimeUnit.MILLISECONDS)) {
+                throw new ServerDownException(
+                        "Timeout while retrieving payloads");
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
         return suggestions;
+    }
+
+    /**
+     * Returns the payload of the suggestion defined by [suggestionID]
+     * 
+     * @param suggestionID
+     *            The ID of the suggestion which payload is to be returned
+     * @return The requested payload or [null] if the s does not exist
+     */
+    public void getPayload(
+            long suggestionID,
+            final AsyncMethodCallback<String> callback) {
+        ListenableActionFuture<GetResponse> future =
+                esClient.prepareGet(payloadIndex, TYPE,
+                        Long.toString(suggestionID)).execute();
+
+        future.addListener(new ActionListener<GetResponse>() {
+
+            public void onResponse(GetResponse response) {
+                /*
+                 * FIXME: This is so uggly! Isn't there a way to store a string
+                 * as it is and not within a json...
+                 * As an alternative we should at least tune this with something
+                 * like
+                 * response.getSourceAsString().substring(X).substring(0,Y);
+                 */
+                callback.onComplete((String) response.getSourceAsMap().get(
+                        PAYLOAD_FIELD));
+            }
+
+            public void onFailure(Throwable e) {
+                callback.onError(new ServerDownException(e.getMessage()));
+            }
+        });
     }
 
     /**
@@ -426,9 +567,10 @@ public class SuggestionIndex {
      * @return The generated List of suggestion containing all suggestions in
      *         the given response
      */
-    private List<Suggestion> generateSuggestionsFromESResponse(
+    private void generateSuggestionsFromESResponse(
             final SuggestResponse response,
-            final int size) {
+            final int size,
+            final AsyncMethodCallback<List<Suggestion>> callback) {
 
         CompletionSuggestion compSuggestion =
                 response.getSuggest().getSuggestion(SUGGEST_FIELD);
@@ -442,20 +584,67 @@ public class SuggestionIndex {
                 CompletionSuggestion.Entry entry = entryList.get(0);
                 List<CompletionSuggestion.Entry.Option> options =
                         entry.getOptions();
-                /*
-                 * Loop through all suggestions
-                 */
-                List<Suggestion> suggestions =
-                        new ArrayList<Suggestion>(options.size());
 
-                for (CompletionSuggestion.Entry.Option option : options) {
-                    suggestions.add(new Suggestion(option.getText().toString(),
-                            option.getPayloadAsString()));
+                if (!options.isEmpty()) {
+                    /*
+                     * Loop through all suggestions
+                     */
+                    // List<Suggestion> suggestions = new ArrayList<Suggestion>(
+                    // options.size());
+                    final Suggestion[] suggestions =
+                            new Suggestion[options.size()];
+
+                    /*
+                     * Used to count how many async requests have already been
+                     * responded
+                     */
+                    final AtomicInteger remainingRequests =
+                            new AtomicInteger(suggestions.length);
+
+                    for (int i = 0; i != suggestions.length; i++) {
+                        final int suggestionNumber = i;
+                        CompletionSuggestion.Entry.Option option =
+                                options.get(i);
+                        suggestions[suggestionNumber] =
+                                new Suggestion(option.getText().toString(),
+                                        ""/*
+                                           * empty
+                                           * payload
+                                           * for
+                                           * now
+                                           */, option.getPayloadAsLong());
+
+                        getPayload(option.getPayloadAsLong(),
+                                new AsyncMethodCallback<String>() {
+
+                                    @Override
+                                    public void onError(Exception e) {
+                                        if (remainingRequests.decrementAndGet() == 0) {
+                                            callback.onError(e);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onComplete(String payload) {
+                                        suggestions[suggestionNumber].payload =
+                                                payload;
+                                        if (remainingRequests.decrementAndGet() == 0) {
+                                            // the last request is finished
+                                            callback.onComplete(Arrays
+                                                    .asList(suggestions));
+                                        }
+                                    }
+                                });
+                    }
+                } else {
+                    callback.onComplete(new ArrayList<Suggestion>(0));
                 }
-                return suggestions;
+            } else { // entryList == null
+                callback.onComplete(new ArrayList<Suggestion>(0));
             }
+        } else { // compSuggestion == null
+            callback.onComplete(new ArrayList<Suggestion>(0));
         }
-        return new ArrayList<Suggestion>(0);
     }
 
     /**
@@ -464,7 +653,7 @@ public class SuggestionIndex {
      * "completion", "index_analyzer" : "simple", "search_analyzer" : "simple",
      * "payloads" : true }}}}
      * 
-     * @param index
+     * @param randomIndex
      *            ES index the new mapping should be added to
      * @param type
      *            The type of the mapping
@@ -479,8 +668,8 @@ public class SuggestionIndex {
                         .startObject("properties").startObject("name")
                         .field("type", "string").endObject()
                         .startObject(SUGGEST_FIELD).field("type", "completion")
-                        .field("index_analyzer", "simple")
-                        .field("search_analyzer", "simple")
+                        .field("index_analyzer", index_and_search_analyzer)
+                        .field("search_analyzer", index_and_search_analyzer)
                         .field("payloads", true).endObject().endObject()
                         .endObject().endObject();
 
@@ -524,7 +713,7 @@ public class SuggestionIndex {
     /**
      * Creates a new ES index if it does not exists yet
      * 
-     * @param index
+     * @param randomIndex
      *            The index to be created
      * @throws ExecutionException
      * @throws InterruptedException
@@ -538,6 +727,15 @@ public class SuggestionIndex {
 
             if (!response.isAcknowledged()) {
                 System.err.println("Unable to create index " + index);
+                return;
+            }
+
+            response =
+                    esClient.admin().indices()
+                            .create(new CreateIndexRequest(payloadIndex)).get();
+            if (!response.isAcknowledged()) {
+                System.err.println("Unable to create index " + payloadIndex);
+                return;
             }
         } catch (ExecutionException e) {
             // Ignore IndexAlreadyExistsExceptions
@@ -557,10 +755,14 @@ public class SuggestionIndex {
      */
     public static void delete(final String index) throws InterruptedException,
             ExecutionException {
-        final DeleteIndexRequest deleteIndexRequest =
-                new DeleteIndexRequest(index);
         try {
-            esClient.admin().indices().delete(deleteIndexRequest).get();
+            esClient.admin().indices().delete(new DeleteIndexRequest(index))
+                    .get();
+
+            esClient.admin()
+                    .indices()
+                    .delete(new DeleteIndexRequest(generatePayloadIndex(index)))
+                    .get();
         } catch (ExecutionException e) {
             // Ignore IndexMissingException
             if (!((e.getCause().getCause()) instanceof IndexMissingException)) {
@@ -713,7 +915,7 @@ public class SuggestionIndex {
                 .setWaitForGreenStatus().execute().actionGet();
     }
 
-    private void expungeDeletes() {
+    public void optimize() {
         esClient.admin().indices().prepareOptimize(index)
                 .setOnlyExpungeDeletes(true).setWaitForMerge(true).execute()
                 .actionGet();
@@ -734,10 +936,25 @@ public class SuggestionIndex {
     }
 
     /**
-     * Must be called every time an search session is finished (suggestion is
+     * Must be called every time a search session is finished (suggestion is
      * selected, timeout or query is deleted)
      */
     public void onSearchSessionFinished(AnalyticsData userData) {
         statisticsAggregator.onSearchSessionFinished(userData);
+    }
+
+    /**
+     * Must be called every time a suggestion was selected
+     */
+    public void onSuggestionSelected(
+            String suggestionID,
+            String suggestionString,
+            AnalyticsData userData) {
+        statisticsAggregator.onSuggestionSelected(suggestionID,
+                suggestionString, userData);
+    }
+
+    public static String generatePayloadIndex(String index) {
+        return index + "-payload";
     }
 }
