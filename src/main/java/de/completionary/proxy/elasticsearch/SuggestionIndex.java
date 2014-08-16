@@ -83,16 +83,16 @@ public class SuggestionIndex {
     static {
         boolean isClient = true;
 
-//        final Node node =
-//                nodeBuilder().clusterName("completionaryCluster")
-//                        .client(isClient).node();
-//        esClient = node.client();
+        final Node node =
+                nodeBuilder().clusterName("completionaryCluster")
+                        .client(isClient).node();
+        esClient = node.client();
 
-                Settings settings = ImmutableSettings.settingsBuilder()
-                        .put("cluster.name", "completionaryCluster").build();
-                
-                esClient = new TransportClient(settings)
-                .addTransportAddress(new InetSocketTransportAddress("metalcon2.physik.uni-mainz.de", 9300));
+        //                Settings settings = ImmutableSettings.settingsBuilder()
+        //                        .put("cluster.name", "completionaryCluster").build();
+        //                
+        //                esClient = new TransportClient(settings)
+        //                .addTransportAddress(new InetSocketTransportAddress("metalcon2.physik.uni-mainz.de", 9300));
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
 

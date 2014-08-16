@@ -1,4 +1,4 @@
-package de.completionary.proxy;
+package de.completionary.proxy.helper;
 
 import java.util.Random;
 
