@@ -32,6 +32,10 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.indices.IndexMissingException;
@@ -79,17 +83,24 @@ public class SuggestionIndex {
     static {
         boolean isClient = true;
 
-        final Node node =
-                nodeBuilder().clusterName("completionaryCluster")
-                        .client(isClient).node();
-        esClient = node.client();
+//        final Node node =
+//                nodeBuilder().clusterName("completionaryCluster")
+//                        .client(isClient).node();
+//        esClient = node.client();
+
+                Settings settings = ImmutableSettings.settingsBuilder()
+                        .put("cluster.name", "completionaryCluster").build();
+                
+                esClient = new TransportClient(settings)
+                .addTransportAddress(new InetSocketTransportAddress("metalcon2.physik.uni-mainz.de", 9300));
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
             @Override
             public void run() {
                 System.out.println("Shutting down ES client");
-                node.close();
+                //                node.close();
+                esClient.close();
             }
         });
     }

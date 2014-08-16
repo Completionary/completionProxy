@@ -12,15 +12,18 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Assert;
 import org.junit.Test;
 
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.helper.Statistics;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
+import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 /**
@@ -68,7 +71,7 @@ public class BulkImportTest extends SuggestionIndexTest {
             }
         });
         Assert.assertTrue("async_addTerms has timed out",
-                lock.await(numberOfTermsToAdd, TimeUnit.MILLISECONDS));
+                lock.await(numberOfTermsToAdd * 100, TimeUnit.MILLISECONDS));
 
         Random random = new Random();
         for (int i = 0; i < 100; i++) {
@@ -82,54 +85,65 @@ public class BulkImportTest extends SuggestionIndexTest {
     public void PerformanceTest() throws InterruptedException,
             ExecutionException, IOException, InvalidIndexNameException,
             ServerDownException {
-        final int numberOfThreads = 8;
-        final int numberOfReuqests = 100000;
+        final int numberOfReuqests = 10000;
 
         final String index = "bulkperformanceindex";
         if (!SuggestionIndex.indexExists(index)) {
-            FillDB(index, 1000000);
+            FillDB(index, 100);
         }
 
-        Thread[] threads = new Thread[numberOfThreads];
-        for (int thread = 0; thread != numberOfThreads; thread++) {
+        final Random random = new SecureRandom();
 
-            threads[thread] = new Thread() {
+        SuggestionIndex client = SuggestionIndex.getIndex(index);
+        final AtomicInteger numberOfSuggestionsFound = new AtomicInteger(0);
+        final long[] times = new long[numberOfReuqests];
 
-                @Override
-                public void run() {
-                    final Random random = new SecureRandom();
-                    try {
-                        long start = System.nanoTime();
-                        SuggestionIndex client =
-                                SuggestionIndex.getIndex(index);
-                        int numberOfSuggestionsFound = 0;
-                        for (int i = 0; i < numberOfReuqests; i++) {
-                            String query =
-                                    RandomStringGenerator.getNextString(random
-                                            .nextInt(10) + 1);
-                            List<Suggestion> l =
-                                    findSuggestionFor(client, query, 200000);
-                            numberOfSuggestionsFound += l.size();
+        final CountDownLatch lock = new CountDownLatch(numberOfReuqests);
+
+        final long start = System.nanoTime();
+        double requestsPerSecond = 0;
+
+        for (int i = 0; i < numberOfReuqests; i++) {
+            final int request = i;
+            String query =
+                    RandomStringGenerator.getNextString(random.nextInt(10) + 1);
+
+            final long requestStart = System.nanoTime();
+            client.async_findSuggestionsFor(query, 10, new AnalyticsData(),
+                    new AsyncMethodCallback<List<Suggestion>>() {
+
+                        public void onError(Exception e) {
+                            Assert.fail(e.getLocalizedMessage());
+                            lock.countDown();
                         }
-                        double timePerRequestInms =
-                                (System.nanoTime() - start)
-                                        / (double) numberOfReuqests / 1E6;
-                        System.out.println("Took " + timePerRequestInms
-                                + " ms per completion request (found "
-                                + numberOfSuggestionsFound + " suggestions in "
-                                + numberOfReuqests + " requests)");
-                    } catch (InvalidIndexNameException | ServerDownException
-                            | InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                }
-            };
-            threads[thread].start();
+
+                        public void onComplete(List<Suggestion> suggestions) {
+                            Assert.assertNotNull("An Error has occured",
+                                    suggestions);
+                            numberOfSuggestionsFound.addAndGet(suggestions
+                                    .size());
+                            lock.countDown();
+                            times[request] = System.nanoTime() - requestStart;
+                        }
+                    });
+            requestsPerSecond =
+                    (double) (request + 1) / (System.nanoTime() - start) * 1E9;
+            if (request % 100 == 0) {
+                System.out
+                        .println("Request rate: " + requestsPerSecond + " Hz");
+            }
+
+            Thread.sleep(2);
         }
 
-        for (int thread = 0; thread != numberOfThreads; thread++) {
-            threads[thread].join();
-        }
-        System.exit(0);
+        lock.await();
+
+        double averageTimePerRequestms = Statistics.calculateAverage(times)/1E6;
+        double standardDeviation = Statistics.calculateStandardDeviation(times)/1E6;
+
+        System.out.println("Request rate: " + requestsPerSecond + " Hz");
+        System.out.println("found " + numberOfSuggestionsFound
+                + " suggestions in " + numberOfReuqests + " requests) ");
+        System.out.println("("+averageTimePerRequestms + "+-"+standardDeviation+") ms per request average");
     }
 }
