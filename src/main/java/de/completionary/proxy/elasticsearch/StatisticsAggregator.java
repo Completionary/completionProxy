@@ -11,6 +11,7 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
+import de.completionary.proxy.analytics.AnalyticsLogger;
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;

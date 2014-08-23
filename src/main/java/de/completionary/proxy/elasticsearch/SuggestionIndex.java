@@ -32,16 +32,14 @@ import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.suggest.SuggestRequestBuilder;
 import org.elasticsearch.action.suggest.SuggestResponse;
 import org.elasticsearch.client.Client;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
-import org.elasticsearch.common.settings.Settings;
-import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.indices.IndexAlreadyExistsException;
 import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestion;
 import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
@@ -52,6 +50,8 @@ import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
 public class SuggestionIndex {
+
+    final static Logger logger = LoggerFactory.getLogger(SuggestionIndex.class);
 
     /*
      * The es index identifying this suggestion index
@@ -88,18 +88,19 @@ public class SuggestionIndex {
                         .client(isClient).node();
         esClient = node.client();
 
-        //                Settings settings = ImmutableSettings.settingsBuilder()
-        //                        .put("cluster.name", "completionaryCluster").build();
-        //                
-        //                esClient = new TransportClient(settings)
-        //                .addTransportAddress(new InetSocketTransportAddress("metalcon2.physik.uni-mainz.de", 9300));
+        // Settings settings = ImmutableSettings.settingsBuilder()
+        // .put("cluster.name", "completionaryCluster").build();
+        //
+        // esClient = new TransportClient(settings)
+        // .addTransportAddress(new
+        // InetSocketTransportAddress("metalcon2.physik.uni-mainz.de", 9300));
 
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
             @Override
             public void run() {
                 System.out.println("Shutting down ES client");
-                //                node.close();
+                // node.close();
                 esClient.close();
             }
         });
@@ -202,6 +203,8 @@ public class SuggestionIndex {
             final int startPos,
             final long timeMillis,
             final AsyncMethodCallback<Long> listener) throws IOException {
+        logger.info("[" + index + "] Bulk import: " + terms.size()
+                + " terms, starting with " + startPos);
 
         final int endPos =
                 Math.min(terms.size(), startPos
@@ -243,6 +246,8 @@ public class SuggestionIndex {
                 }
 
                 public void onFailure(Throwable e) {
+                    logger.error("[" + index + "] Bulk import error: "
+                            + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
                 }
             });
@@ -250,10 +255,14 @@ public class SuggestionIndex {
             future.addListener(new ActionListener<BulkResponse>() {
 
                 public void onResponse(BulkResponse response) {
+                    logger.info("[" + index + "] Finished Bulk import: "
+                            + terms.size() + " terms");
                     listener.onComplete(timeMillis + response.getTookInMillis());
                 }
 
                 public void onFailure(Throwable e) {
+                    logger.error("[" + index + "] Bulk import error: "
+                            + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
                 }
             });
@@ -556,9 +565,8 @@ public class SuggestionIndex {
             public void onResponse(GetResponse response) {
                 /*
                  * FIXME: This is so uggly! Isn't there a way to store a string
-                 * as it is and not within a json...
-                 * As an alternative we should at least tune this with something
-                 * like
+                 * as it is and not within a json... As an alternative we should
+                 * at least tune this with something like
                  * response.getSourceAsString().substring(X).substring(0,Y);
                  */
                 callback.onComplete((String) response.getSourceAsMap().get(
@@ -622,10 +630,7 @@ public class SuggestionIndex {
                         suggestions[suggestionNumber] =
                                 new Suggestion(option.getText().toString(),
                                         ""/*
-                                           * empty
-                                           * payload
-                                           * for
-                                           * now
+                                           * empty payload for now
                                            */, option.getPayloadAsLong());
 
                         getPayload(option.getPayloadAsLong(),

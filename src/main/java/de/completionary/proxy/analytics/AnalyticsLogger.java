@@ -1,4 +1,4 @@
-package de.completionary.proxy.elasticsearch;
+package de.completionary.proxy.analytics;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

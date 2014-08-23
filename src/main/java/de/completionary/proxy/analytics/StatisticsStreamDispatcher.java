@@ -1,4 +1,4 @@
-package de.completionary.proxy.streaming;
+package de.completionary.proxy.analytics;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -23,7 +23,7 @@ import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameExcepti
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 
-public class StatisticsDispatcher extends TimerTask {
+public class StatisticsStreamDispatcher extends TimerTask {
 
     /*
      * Time between two statistics updates sent to the clients
@@ -36,7 +36,7 @@ public class StatisticsDispatcher extends TimerTask {
     private final Map<String, StreamingClientServiceClient> clientsByHostAndPort =
             new HashMap<String, StreamingClientServiceClient>();
 
-    public StatisticsDispatcher() {
+    public StatisticsStreamDispatcher() {
         Timer timer = new Timer();
         timer.schedule(this, SendingDelay, SendingDelay);
         System.out.println("StatisticsDispatcher started");

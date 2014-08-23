@@ -3,16 +3,16 @@ package de.completionary.proxy.thrift.handler;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-import de.completionary.proxy.streaming.StatisticsDispatcher;
+import de.completionary.proxy.analytics.StatisticsStreamDispatcher;
 import de.completionary.proxy.thrift.services.streaming.StreamingService;
 
 public class StreamingHandler implements StreamingService.AsyncIface {
 
-	private final StatisticsDispatcher dispatcher;
+	private final StatisticsStreamDispatcher dispatcher;
 
 	public StreamingHandler() {
 		super();
-		dispatcher = new StatisticsDispatcher();
+		dispatcher = new StatisticsStreamDispatcher();
 	}
 
 	@Override

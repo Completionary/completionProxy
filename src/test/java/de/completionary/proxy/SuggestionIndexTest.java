@@ -19,7 +19,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 
-import de.completionary.proxy.elasticsearch.AnalyticsLogger;
+import de.completionary.proxy.analytics.AnalyticsLogger;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
