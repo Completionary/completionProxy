@@ -32,7 +32,12 @@
 			<version>1.1.2</version>
 		</dependency>
 
-
+		<dependency>
+			<groupId>org.rrd4j</groupId>
+			<artifactId>rrd4j</artifactId>
+			<version>2.1</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.elasticsearch</groupId>
 			<artifactId>elasticsearch</artifactId>
@@ -56,18 +61,6 @@
 			<groupId>net.minidev</groupId>
 			<artifactId>json-smart</artifactId>
 			<version>1.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.7</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-simple</artifactId>
-			<version>1.7.7</version>
 		</dependency>
 
 		<dependency>

@@ -2,16 +2,15 @@
  * This class is used to aggregate completion statistics to be used for the
  * streaming and analytics services
  */
-package de.completionary.proxy.elasticsearch;
+package de.completionary.proxy.analytics;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import de.completionary.proxy.analytics.AnalyticsLogger;
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
@@ -20,34 +19,33 @@ import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 /**
  * @author Jonas Kunze (kunze.jonas@gmail.com)
  *
- *         TODO: This class is not thread safe at the moment. We should
- *         implement a ZMQ communication layer between ES-Index and Aggregator
  */
-class StatisticsAggregator {
+public abstract class AStatisticsAggregator {
 
     /*
-     * List of the active users during the current aggregation priod (1s)
+     * List of the active users during the current aggregation period (1s)
+     * TODO: Check which concurrent Set is the best for this task
      */
-    private Set<Long> activeUsers = new TreeSet<Long>();
+    protected Set<Long> activeUsers = new ConcurrentSkipListSet<Long>();
 
-    private AtomicInteger numberOfQueries = new AtomicInteger(0);
+    protected AtomicInteger numberOfQueries = new AtomicInteger(0);
 
-    private Set<String> randomSampleOfCurrentCompletedTerms =
-            new TreeSet<String>();
+    protected Set<String> randomSampleOfCurrentCompletedTerms =
+            new ConcurrentSkipListSet<String>();
 
-    private AtomicInteger numberOfSelectedSuggestions = new AtomicInteger(0);
+    protected AtomicInteger numberOfSelectedSuggestions = new AtomicInteger(0);
 
-    private AtomicInteger numberOfSearchSessions = new AtomicInteger(0);
+    protected AtomicInteger numberOfSearchSessions = new AtomicInteger(0);
 
-    private AtomicInteger numberOfShownSuggestions = new AtomicInteger(0);
+    protected AtomicInteger numberOfShownSuggestions = new AtomicInteger(0);
 
-    private AtomicLong indexSize;
+    protected AtomicLong indexSize;
 
-    private AtomicLong numberOfQueriesThisMonth;
+    protected AtomicLong numberOfQueriesThisMonth;
 
-    private static final AnalyticsLogger logger = new AnalyticsLogger();
+    private static final LoggingHandler logger = new LoggingHandler();
 
-    public StatisticsAggregator(
+    public AStatisticsAggregator(
             long indexSize,
             long numberOfQueriesThisMonth) {
         this.indexSize = new AtomicLong(indexSize);
