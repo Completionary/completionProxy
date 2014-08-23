@@ -10,10 +10,23 @@ public class ProxyOptions extends Options {
 
     public static int ANALYTICS_SERVER_PORT;
 
+    public static String ANALYTICS_STORAGE_DIR;
+
+    /*
+     * Definition of the different time resolutions in seconds (;-separated
+     * list)
+     */
+    public static String ANALYTICS_RESOLUTIONS;
+
+    /*
+     * Number of rows (entries) of each resolution (;-separated list)
+     */
+    public static String ANALYTICS_RESOLUTION_STORE_ROWS;
+
     public static int STREAMING_SERVER_PORT;
 
     public static int SUGGESTION_SERVER_BINARY_PORT;
-    
+
     public static int SUGGESTION_SERVER_HTTP_PORT;
 
     /*
@@ -32,5 +45,19 @@ public class ProxyOptions extends Options {
             e.printStackTrace();
             System.exit(1);
         }
+    }
+
+    public static String[] getStringList(final String semicolonSeparatedList) {
+        return semicolonSeparatedList.split(";");
+    }
+
+    public static int[] getIntList(final String semicolonSeparatedList) {
+        String[] strings = semicolonSeparatedList.split(";");
+        int[] ints = new int[strings.length];
+
+        for (int i = 0; i != strings.length; i++) {
+            ints[i] = Integer.parseInt(strings[i]);
+        }
+        return ints;
     }
 }

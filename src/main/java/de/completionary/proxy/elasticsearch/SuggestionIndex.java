@@ -41,6 +41,8 @@ import org.elasticsearch.search.suggest.completion.CompletionSuggestionBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.completionary.proxy.analytics.AStatisticsAggregator;
+import de.completionary.proxy.analytics.StatisticsAggregator_RrdDb;
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
@@ -61,7 +63,7 @@ public class SuggestionIndex {
 
     private final String payloadIndex;
 
-    private final StatisticsAggregator statisticsAggregator;
+    private final AStatisticsAggregator statisticsAggregator;
 
     private static Client esClient = null;
 
@@ -205,11 +207,11 @@ public class SuggestionIndex {
             addMapping(TYPE);
         }
 
-        statisticsAggregator = new StatisticsAggregator(indexSize(), /*
-                                                                      * TODO:
-                                                                      * get
-                                                                      * queriesThisMonth
-                                                                      */0);
+        statisticsAggregator = new StatisticsAggregator_RrdDb(indexID, indexSize(), /*
+                                                                         * TODO:
+                                                                         * get
+                                                                         * queriesThisMonth
+                                                                         */0);
     }
 
     /**

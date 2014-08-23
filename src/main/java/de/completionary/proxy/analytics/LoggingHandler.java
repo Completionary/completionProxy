@@ -23,21 +23,27 @@ import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
  * @author Jonas Kunze (kunze.jonas@gmail.com)s
  */
 
-public class AnalyticsLogger {
+public class LoggingHandler {
 
     private static boolean isActive = true;
 
-    final static Logger logger = LoggerFactory.getLogger(AnalyticsLogger.class);
+    final static Logger logger = LoggerFactory.getLogger(LoggingHandler.class);
 
-    public AnalyticsLogger() {
+    public LoggingHandler() {
         logger.info("Entering application.");
     }
 
+    /**
+     * May be used for unit tests to disable logging
+     */
     public static void disableLogging() {
         isActive = false;
     }
 
-    public static void reenableLoggin() {
+    /**
+     * May be used for unit tests to re-enable logging
+     */
+    public static void reenableLogging() {
         isActive = true;
     }
 
