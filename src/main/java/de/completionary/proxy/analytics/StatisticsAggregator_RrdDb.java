@@ -1,13 +1,14 @@
 package de.completionary.proxy.analytics;
 
-import static de.completionary.proxy.analytics.AnalyticsField.IndexSize;
 import static de.completionary.proxy.analytics.AnalyticsField.CurrentUsers;
+import static de.completionary.proxy.analytics.AnalyticsField.IndexSize;
 import static de.completionary.proxy.analytics.AnalyticsField.Queries;
 import static de.completionary.proxy.analytics.AnalyticsField.SelectedSuggestions;
 import static de.completionary.proxy.analytics.AnalyticsField.Sessions;
 import static de.completionary.proxy.analytics.AnalyticsField.ShownSuggestions;
 import static org.rrd4j.ConsolFun.AVERAGE;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,6 @@ import org.rrd4j.core.RrdDb;
 import org.rrd4j.core.RrdDef;
 import org.rrd4j.core.Sample;
 
-import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 
@@ -142,7 +142,7 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
                                                             */, rows[i]);
         }
 
-        System.out.println("Estimated file size: " + rrdDef.getEstimatedSize());
+        System.out.println("Estimated RRD file size: " + rrdDef.getEstimatedSize()/1E6+" MB");
         return rrdDef;
     }
 
@@ -150,6 +150,8 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
      * Generates the path to the rrd file to be used for this DB
      */
     private String generateFilePath() {
+        File f = new File(ProxyOptions.ANALYTICS_STORAGE_DIR);
+        f.mkdirs();
         return ProxyOptions.ANALYTICS_STORAGE_DIR + "/" + index + ".rrd";
     }
 
