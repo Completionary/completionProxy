@@ -2,6 +2,8 @@ namespace java de.completionary.proxy.thrift.services.analytics
 
 include "admin.thrift"
 
+include "streaming.thrift"
+
 /*
  * Including a common.thrift with typedefs only works if you call
  * the type via common.int -> that's ugly so let's define it here
@@ -38,4 +40,11 @@ service AnalyticsService {
 	 *  Returns the number of items that are currently stored in the index 
 	 */
 	int getIndexSize(1: string index);
+
+	/**
+	 * Retrieves a list of statistics fields in the lowest time resolution available within
+	 * the timeperiod [startTime, endTime]. numberOfQueriesThisMonth and 
+	 * randomSampleOfCurrentCompletedTerms will not be set. 
+	 */
+	list<streaming.StreamedStatisticsField> getAnalytics(1: string index, 2: long startTime, 3: long endTime);
 }

@@ -1,5 +1,6 @@
 package de.completionary.proxy.analytics;
 
+import static de.completionary.proxy.analytics.AnalyticsField.IndexSize;
 import static de.completionary.proxy.analytics.AnalyticsField.CurrentUsers;
 import static de.completionary.proxy.analytics.AnalyticsField.Queries;
 import static de.completionary.proxy.analytics.AnalyticsField.SelectedSuggestions;
@@ -19,6 +20,7 @@ import org.rrd4j.core.RrdDb;
 import org.rrd4j.core.RrdDef;
 import org.rrd4j.core.Sample;
 
+import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 
@@ -152,7 +154,8 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
     }
 
     /**
-     * Writes all values stored in [currentValues] to the rrd DB and resets the
+     * Writes all values stored in {@link currentValues} to the rrd DB and
+     * resets the
      * current values
      * 
      * @throws IOException
@@ -167,18 +170,53 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
         sample.setValue(Sessions.ID, numberOfSearchSessions.getAndSet(0));
         sample.setValue(ShownSuggestions.ID,
                 numberOfShownSuggestions.getAndSet(0));
+        sample.setValue(IndexSize.ID, indexSize.get());
 
         sample.update();
     }
-    
-    public List<StreamedStatisticsField> getStatistics(){
-//        FetchRequest request = rrdDb.createFetchRequest(AVERAGE, start, end);
-//        println(request.dump());
-//        FetchData fetchData = request.fetchData();
-//        println("== Data fetched. " + fetchData.getRowCount()
-//                + " points obtained");
-//        println(fetchData.toString());
-//        println("== Fetch completed");
-        return null;
+
+    /**
+     * Retrieves all statistics in the period between {@link start} and
+     * {@link stop}
+     * <p>
+     * The
+     * 
+     * @param start
+     *            The unix timestamp of the first statistics field to be
+     *            returned
+     * @param end
+     *            The unix timestamp of the last statistics field to be returned
+     * @return
+     * @throws IOException
+     */
+    public List<StreamedStatisticsField> getStatistics(long start, long end)
+            throws IOException {
+        FetchRequest request = rrdDb.createFetchRequest(AVERAGE, start, end);
+        FetchData fetchData = request.fetchData();
+
+        /*
+         * values[AnalyticsField.ID] stores all values of the corresponding
+         * analytics field type
+         */
+        double[][] values = fetchData.getValues();
+
+        List<StreamedStatisticsField> fields =
+                new ArrayList<StreamedStatisticsField>(values[0].length);
+
+        for (int i = 0; i < values[0].length; i++) {
+            StreamedStatisticsField field = new StreamedStatisticsField();
+
+            field.numberOfCurrentUsers = (int) values[CurrentUsers.ID][i];
+            field.numberOfQueries = (int) values[Queries.ID][i];
+            field.numberOfSelectedSuggestions =
+                    (int) values[SelectedSuggestions.ID][i];
+            field.numberOfSearchSessions = (int) values[Sessions.ID][i];
+            field.numberOfShownSuggestions =
+                    (int) values[ShownSuggestions.ID][i];
+            field.indexSize = (int) values[CurrentUsers.ID][i];
+            fields.add(field);
+        }
+
+        return fields;
     }
 }

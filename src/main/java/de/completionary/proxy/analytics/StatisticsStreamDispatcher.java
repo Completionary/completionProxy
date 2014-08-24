@@ -257,7 +257,7 @@ public class StatisticsStreamDispatcher extends TimerTask {
                 if (field == null) {
                     try {
                         field =
-                                SuggestionIndex.getIndex(index)
+                                SuggestionIndex.getIndex(index).getStatistics()
                                         .getCurrentStatistics();
                     } catch (IndexUnknownException | InvalidIndexNameException
                             | ServerDownException e) {
