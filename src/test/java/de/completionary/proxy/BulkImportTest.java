@@ -22,6 +22,7 @@ import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.helper.RandomStringGenerator;
 import de.completionary.proxy.helper.Statistics;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
@@ -37,7 +38,7 @@ public class BulkImportTest extends SuggestionIndexTest {
 
     public static void FillDB(String index, int numberOfTermsToAdd)
             throws InvalidIndexNameException, ServerDownException, IOException,
-            InterruptedException {
+            InterruptedException, IndexUnknownException {
         SuggestionIndex client = SuggestionIndex.getIndex(index);
 
         /*
@@ -86,15 +87,19 @@ public class BulkImportTest extends SuggestionIndexTest {
     public void PerformanceTest() throws InterruptedException,
             ExecutionException, IOException, InvalidIndexNameException,
             ServerDownException {
-       
-        
+
         final String index = "wikipediaindex";
-        SuggestionIndex client = SuggestionIndex.getIndex(index);
+        SuggestionIndex client;
+        try {
+            client = SuggestionIndex.getIndex(index);
+        } catch (IndexUnknownException e1) {
+            e1.printStackTrace();
+            return;
+        }
         client.findSuggestionsFor("a", 10, new AnalyticsData());
         //        if (!SuggestionIndex.indexExists(index)) {
         //            FillDB(index, 10000);
         //        }
-        
 
         for (int sleepTime = 0; sleepTime < 200; sleepTime *= 2) {
 
@@ -144,8 +149,8 @@ public class BulkImportTest extends SuggestionIndexTest {
                 //                            + " Hz");
                 //                }
 
-                for(int j=0; j<sleepTime*1E4; j++){
-                    
+                for (int j = 0; j < sleepTime * 1E4; j++) {
+
                 }
             }
 

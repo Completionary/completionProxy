@@ -4,6 +4,10 @@ exception IndexUnknownException {
 	1: string message;
 }
 
+exception IndexAlreadyExistsException {
+	1: string message;
+}
+
 exception InvalidIndexNameException {
 	1: string message;
 }

@@ -11,7 +11,6 @@ import java.util.TimerTask;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -43,7 +42,7 @@ public class StatisticsStreamDispatcher extends TimerTask {
     }
 
     /**
-     * Registers a new client to receive a statistics stream
+     * Registers a new client to receive a statistics stream if the index exits
      * 
      * @param index
      *            Index of the statistics to be sent
@@ -68,7 +67,7 @@ public class StatisticsStreamDispatcher extends TimerTask {
                     .onError(new IndexUnknownException(
                             "You tried to register for a statistics stream of index '"
                                     + index
-                                    + "' even thought this index is not stored in our database"));
+                                    + "' even though this index is not stored in our database"));
             return;
         }
 
@@ -93,8 +92,6 @@ public class StatisticsStreamDispatcher extends TimerTask {
             TNonblockingSocket transport =
                     new TNonblockingSocket(hostName, port);
             transport.setTimeout(10);
-
-            TProtocol protocol = new TBinaryProtocol(transport);
 
             TProtocolFactory protocolFactory = new TBinaryProtocol.Factory();
             TAsyncClientManager clientManager = new TAsyncClientManager();
@@ -262,7 +259,9 @@ public class StatisticsStreamDispatcher extends TimerTask {
                         field =
                                 SuggestionIndex.getIndex(index)
                                         .getCurrentStatistics();
-                    } catch (InvalidIndexNameException | ServerDownException e) {
+                    } catch (IndexUnknownException | InvalidIndexNameException
+                            | ServerDownException e) {
+                        // This should not happen as we've already checked if the index exists during registration
                         e.printStackTrace();
                     }
 

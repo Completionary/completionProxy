@@ -9,6 +9,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.admin.AdminService;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 
@@ -25,7 +26,8 @@ public class AdminHandler implements AdminService.AsyncIface {
             String payload,
             int weight,
             final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
+            throws InvalidIndexNameException, ServerDownException,
+            IndexUnknownException {
 
         try {
             SuggestionIndex.checkIndexValidity(index);
@@ -59,7 +61,8 @@ public class AdminHandler implements AdminService.AsyncIface {
             String index,
             List<SuggestionField> terms,
             final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
+            throws InvalidIndexNameException, ServerDownException,
+            IndexUnknownException {
         try {
             SuggestionIndex.checkIndexValidity(index);
         } catch (InvalidIndexNameException e) {
@@ -92,7 +95,8 @@ public class AdminHandler implements AdminService.AsyncIface {
             String index,
             long ID,
             final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
+            throws InvalidIndexNameException, ServerDownException,
+            IndexUnknownException {
         try {
             SuggestionIndex.getIndex(index).async_deleteSingleTerm(ID,
                     new AsyncMethodCallback<Boolean>() {
@@ -118,7 +122,8 @@ public class AdminHandler implements AdminService.AsyncIface {
             String index,
             List<Long> IDs,
             final AsyncMethodCallback resultHandler)
-            throws InvalidIndexNameException, ServerDownException {
+            throws InvalidIndexNameException, ServerDownException,
+            IndexUnknownException {
         try {
             SuggestionIndex.getIndex(index).async_deleteTerms(IDs,
                     new AsyncMethodCallback<Long>() {
@@ -135,7 +140,6 @@ public class AdminHandler implements AdminService.AsyncIface {
         } catch (IOException e) {
             resultHandler.onError(new ServerDownException(e.getMessage()));
         }
-
     }
 
     @Override
@@ -158,7 +162,9 @@ public class AdminHandler implements AdminService.AsyncIface {
     public void truncateIndex(
             String apiToken,
             String index,
-            final AsyncMethodCallback resultHandler) {
+            final AsyncMethodCallback resultHandler)
+            throws IndexUnknownException, InvalidIndexNameException,
+            ServerDownException {
         try {
             SuggestionIndex.getIndex(index).async_truncate(
 
@@ -173,7 +179,7 @@ public class AdminHandler implements AdminService.AsyncIface {
                     resultHandler.onComplete(time);
                 }
             });
-        } catch (Exception e) {
+        } catch (InterruptedException | ExecutionException | IOException e) {
             resultHandler.onError(new ServerDownException(e.getMessage()));
         }
     }

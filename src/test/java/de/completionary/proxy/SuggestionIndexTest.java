@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import de.completionary.proxy.analytics.AnalyticsLogger;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
+import de.completionary.proxy.thrift.services.exceptions.IndexAlreadyExistsException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
@@ -46,7 +47,12 @@ public class SuggestionIndexTest {
         Random r = new Random();
         String index = "testindex" + r.nextInt();
         randomIndices.add(index);
-        return SuggestionIndex.getIndex(index);
+        try {
+            return SuggestionIndex.generateIndex(index);
+        } catch (IndexAlreadyExistsException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @AfterClass

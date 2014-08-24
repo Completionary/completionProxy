@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
@@ -107,14 +108,15 @@ public class SuggestionIndex {
     }
 
     /**
-     * Factory methode to create SuggestionIndex objects
+     * Factory methode to get SuggestionIndex objects
      * 
      * @param index
      *            The ID of the index
      * @return A new Index or null in case of an error
      */
     public static SuggestionIndex getIndex(final String index)
-            throws InvalidIndexNameException, ServerDownException {
+            throws IndexUnknownException, InvalidIndexNameException,
+            ServerDownException {
         if (index.equals("")) {
             throw new InvalidIndexNameException("The index must not be empty");
         }
@@ -123,17 +125,72 @@ public class SuggestionIndex {
             return instance;
         }
 
+        if (indexExists(index)) {
+            return generateInstance(index);
+        }
+
+        throw new IndexUnknownException("Index " + index + " does not exist");
+    }
+
+    /**
+     * Factory method to generate a non existing index
+     * 
+     * @param index
+     *            The ID of the index to be generated
+     * @return the newly generated index
+     */
+    public static
+        SuggestionIndex
+        generateIndex(final String index)
+                throws InvalidIndexNameException,
+                ServerDownException,
+                de.completionary.proxy.thrift.services.exceptions.IndexAlreadyExistsException {
+        if (index.equals("")) {
+            throw new InvalidIndexNameException("The index must not be empty");
+        }
+        /*
+         * Check if the index already exists in the cache or at least in the DB
+         */
+        SuggestionIndex instance = indices.get(index);
+        if (instance == null && !indexExists(index)) {
+            /*
+             * Generate a new Instance only if the index did not already exists
+             */
+            return generateInstance(index);
+        }
+
+        throw new de.completionary.proxy.thrift.services.exceptions.IndexAlreadyExistsException(
+                "The index " + index + " already exists");
+    }
+
+    /**
+     * Generates a new Index instance and initializes the DB if the index did
+     * not exists yet
+     * 
+     * @param index
+     *            The ID of the index to be generated
+     * @return The generated index
+     */
+    private static SuggestionIndex generateInstance(final String index)
+            throws ServerDownException {
+
         synchronized (esClient) {
             try {
-                instance = new SuggestionIndex(index);
+                SuggestionIndex instance = new SuggestionIndex(index);
+                indices.put(index, instance);
+                return instance;
             } catch (ExecutionException | InterruptedException | IOException e) {
                 throw new ServerDownException(e.getMessage());
             }
-            indices.put(index, instance);
         }
-        return instance;
     }
 
+    /**
+     * Constructor initializing the DB if the index does not yet exists
+     * 
+     * @param indexID
+     *            The ID of the index
+     */
     private SuggestionIndex(
             String indexID) throws ExecutionException, InterruptedException,
             IOException {
@@ -143,9 +200,7 @@ public class SuggestionIndex {
         /*
          * Create the ES index if it does not exist yet
          */
-        final boolean indexExists = indexExists(indexID);
-
-        if (!indexExists) {
+        if (!indexExists(indexID)) {
             createIndexIfNotExists();
             addMapping(TYPE);
         }
