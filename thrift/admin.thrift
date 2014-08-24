@@ -76,24 +76,24 @@ service AdminService {
 			4: list<string> inputs,
 			5: string outputField,
 			6: string payload,
-			7: int weight) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException);
+			7: int weight) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException indexKnownException);
 
 	/**
 	 * Adds a list of terms in one single transaction (see above)
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long addTerms (1: string apiToken, 2: string index, 3: list<SuggestionField> terms) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException);
+	long addTerms (1: string apiToken, 2: string index, 3: list<SuggestionField> terms) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException indexKnownException);
 
 	/**
 	 * Removes a term from the Database
 	 */
-	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: long ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException);
+	bool deleteSingleTerm(1: string apiToken, 2: string index, 3: long ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException indexKnownException);
 
 	/**
 	 * Removes several terms from the Database
 	 * @return Number of milliseconds passed on the server side
 	 */
-	long deleteTerms(1: string apiToken, 2: string index, 3: list<long> ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException);
+	long deleteTerms(1: string apiToken, 2: string index, 3: list<long> ID) throws (1: exceptions.InvalidIndexNameException invalidIndexException, 2: exceptions.ServerDownException serverDownException, 3: exceptions.IndexUnknownException indexKnownException);
 
 	/**
 	 * Deletes a whole index
