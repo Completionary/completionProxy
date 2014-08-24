@@ -11,6 +11,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import de.completionary.proxy.elasticsearch.SuggestionIndex;
 import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.analytics.AnalyticsService;
+import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
 import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
@@ -51,7 +52,8 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
             String index,
             long startTime,
             long endTime,
-            AsyncMethodCallback resultHandler) {
+            AsyncMethodCallback resultHandler) throws IndexUnknownException,
+            InvalidIndexNameException, ServerDownException {
         List<StreamedStatisticsField> list;
         try {
             list =
@@ -59,9 +61,7 @@ public class AnalyticsHandler implements AnalyticsService.AsyncIface {
                             .getStatistics(startTime, endTime);
             resultHandler.onComplete(list);
         } catch (IOException e) {
-            resultHandler.onError(new ServerDownException());
-        } catch (InvalidIndexNameException | ServerDownException e) {
-            resultHandler.onError(e);
+            throw new ServerDownException();
         }
     }
 }
