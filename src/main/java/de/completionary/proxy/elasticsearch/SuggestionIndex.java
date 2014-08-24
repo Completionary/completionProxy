@@ -207,7 +207,8 @@ public class SuggestionIndex {
             addMapping(TYPE);
         }
 
-        statisticsAggregator = new StatisticsAggregator_RrdDb(indexID, indexSize(), /*
+        statisticsAggregator =
+                new StatisticsAggregator_RrdDb(indexID, getIndexSize(), /*
                                                                          * TODO:
                                                                          * get
                                                                          * queriesThisMonth
@@ -306,6 +307,7 @@ public class SuggestionIndex {
                     logger.error("[" + index + "] Bulk import error: "
                             + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
+                    statisticsAggregator.onTermsAdded(getIndexSize());
                 }
             });
         } else {
@@ -315,12 +317,14 @@ public class SuggestionIndex {
                     logger.info("[" + index + "] Finished Bulk import: "
                             + terms.size() + " terms");
                     listener.onComplete(timeMillis + response.getTookInMillis());
+                    statisticsAggregator.onTermsAdded(getIndexSize());
                 }
 
                 public void onFailure(Throwable e) {
                     logger.error("[" + index + "] Bulk import error: "
                             + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
+                    statisticsAggregator.onTermsAdded(getIndexSize());
                 }
             });
         }
@@ -372,6 +376,7 @@ public class SuggestionIndex {
 
             public void onResponse(BulkResponse response) {
                 listener.onComplete(response.getTookInMillis());
+                statisticsAggregator.onTermAdded(getIndexSize());
             }
 
             public void onFailure(Throwable e) {
@@ -443,6 +448,7 @@ public class SuggestionIndex {
 
             public void onResponse(BulkResponse response) {
                 listener.onComplete(response.getTookInMillis());
+                statisticsAggregator.onTermsDeleted(getIndexSize());
             }
 
             public void onFailure(Throwable e) {
@@ -960,20 +966,11 @@ public class SuggestionIndex {
     }
 
     /**
-     * Returns the statistics aggregated since last call of this method
-     * 
-     * @return
-     */
-    public StreamedStatisticsField getCurrentStatistics() {
-        return statisticsAggregator.getCurrentStatistics();
-    }
-
-    /**
      * Returns the number of terms stored in the index
      * 
      * @return The number of terms stored in the index
      */
-    public long indexSize() {
+    public long getIndexSize() {
         CountResponse countResponse =
                 esClient.prepareCount(index).setTypes(TYPE).execute()
                         .actionGet();
@@ -1028,6 +1025,15 @@ public class SuggestionIndex {
             AnalyticsData userData) {
         statisticsAggregator.onSuggestionSelected(suggestionID,
                 suggestionString, userData);
+    }
+    
+    /**
+     * Returns the StatisticsAggregator to access all kind of analytics data
+     * 
+     * @return
+     */
+    public AStatisticsAggregator getStatistics() {
+        return statisticsAggregator;
     }
 
     public static String generatePayloadIndex(String index) {

@@ -4,6 +4,7 @@
  */
 package de.completionary.proxy.analytics;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -114,10 +115,11 @@ public abstract class AStatisticsAggregator {
     }
 
     /**
-     * Must be called every time a new term was added to the index
+     * Must be called every time a new term was added to the index to update the
+     * index size.
      */
-    public void onTermAdded() {
-        indexSize.incrementAndGet();
+    public void onTermAdded(long newIndexSize) {
+        indexSize.set(newIndexSize);
     }
 
     /**
@@ -125,6 +127,22 @@ public abstract class AStatisticsAggregator {
      */
     public void onTermDeleted() {
         indexSize.decrementAndGet();
+    }
+
+    /**
+     * Must be called every time terms were added to the index to update the
+     * index size
+     */
+    public void onTermsAdded(long newIndexSize) {
+        indexSize.set(newIndexSize);
+    }
+
+    /**
+     * Must be called every time terms were deleted from the index to update the
+     * index size
+     */
+    public void onTermsDeleted(long newIndexSize) {
+        indexSize.set(newIndexSize);
     }
 
     /**
@@ -156,4 +174,7 @@ public abstract class AStatisticsAggregator {
         numberOfSearchSessions.set(0);
         numberOfShownSuggestions.set(0);
     }
+    
+    public abstract List<StreamedStatisticsField> getStatistics(long start, long end)
+            throws IOException;
 }
