@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.sql.Array;
+import java.util.Arrays;
 import java.util.Properties;
 
 public abstract class Options {
@@ -55,7 +57,9 @@ public abstract class Options {
             System.err
                     .println("Unable to initialize "
                             + c.getName()
-                            + ": The number of class fields and entries in the resource bundle file must be equal.");
+                            + ": The number of class fields and entries in the resource bundle file must be equal. Expecting "
+                            + fields.length + " options in the bundle file");
+            
             System.exit(1);
         }
 
