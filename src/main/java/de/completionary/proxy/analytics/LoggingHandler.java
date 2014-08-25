@@ -3,7 +3,6 @@ package de.completionary.proxy.analytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 
 /**
@@ -78,8 +77,12 @@ public class LoggingHandler {
     private void appendUserData(
             final AnalyticsData userData,
             final StringBuilder builder) {
-        builder.append(userData.userID);
-        builder.append('\t');
-        builder.append(userData.userAgent);
+        if (userData != null) {
+            builder.append(userData.userID);
+            builder.append('\t');
+            builder.append(userData.userAgent);
+        } else {
+            builder.append("noUserAgentAvailable");
+        }
     }
 }

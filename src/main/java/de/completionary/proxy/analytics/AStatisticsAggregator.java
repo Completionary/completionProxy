@@ -67,17 +67,19 @@ public abstract class AStatisticsAggregator {
      * Must be called every time a suggestion query was run
      * 
      * @param userData
-     *            End user specific analytics data
+     *            End user specific analytics data (may be null)
      * @param suggestRequest
      *            The string that was completed
      * @param suggestions
-     *            The list of suggestions that was sent back to the client
+     *            The list of suggestions that was sent back to the client (may not be null)
      */
     public void onQuery(
             final AnalyticsData userData,
             final String suggestRequest,
             final List<Suggestion> suggestions) {
-        activeUsers.add(userData.userID);
+        if (userData != null) {
+            activeUsers.add(userData.userID);
+        }
         numberOfQueries.incrementAndGet();
         numberOfQueriesThisMonth.incrementAndGet();
         if (!suggestions.isEmpty()) {
@@ -174,7 +176,8 @@ public abstract class AStatisticsAggregator {
         numberOfSearchSessions.set(0);
         numberOfShownSuggestions.set(0);
     }
-    
-    public abstract List<StreamedStatisticsField> getStatistics(long start, long end)
-            throws IOException;
+
+    public abstract List<StreamedStatisticsField> getStatistics(
+            long start,
+            long end) throws IOException;
 }
