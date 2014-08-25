@@ -36,6 +36,8 @@ public class ProxyOptions extends Options {
     public static int SPLIT_BULK_REQUEST_SIZE;
 
     public static int MAX_NUMBER_OF_SAMPLE_TERMS_IN_STREAM;
+    
+    public static boolean ENABLE_LOGGIN;
 
     static {
         try {

@@ -13,6 +13,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.elasticsearch.action.ActionListener;
@@ -48,7 +50,6 @@ import de.completionary.proxy.thrift.services.admin.SuggestionField;
 import de.completionary.proxy.thrift.services.exceptions.IndexUnknownException;
 import de.completionary.proxy.thrift.services.exceptions.InvalidIndexNameException;
 import de.completionary.proxy.thrift.services.exceptions.ServerDownException;
-import de.completionary.proxy.thrift.services.streaming.StreamedStatisticsField;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 import de.completionary.proxy.thrift.services.suggestion.Suggestion;
 
@@ -147,9 +148,8 @@ public class SuggestionIndex {
                 throws InvalidIndexNameException,
                 ServerDownException,
                 de.completionary.proxy.thrift.services.exceptions.IndexAlreadyExistsException {
-        if (index.equals("")) {
-            throw new InvalidIndexNameException("The index must not be empty");
-        }
+        checkIndexValidity(index);
+
         /*
          * Check if the index already exists in the cache or at least in the DB
          */
@@ -206,13 +206,17 @@ public class SuggestionIndex {
             createIndexIfNotExists();
             addMapping(TYPE);
         }
-
-        statisticsAggregator =
-                new StatisticsAggregator_RrdDb(indexID, getIndexSize(), /*
-                                                                         * TODO:
-                                                                         * get
-                                                                         * queriesThisMonth
-                                                                         */0);
+        if (ProxyOptions.ENABLE_LOGGIN) {
+            statisticsAggregator =
+                    new StatisticsAggregator_RrdDb(indexID, getIndexSize(), /*
+                                                                             * TODO:
+                                                                             * get
+                                                                             * queriesThisMonth
+                                                                             */
+                    0);
+        } else {
+            statisticsAggregator = null;
+        }
     }
 
     /**
@@ -307,7 +311,9 @@ public class SuggestionIndex {
                     logger.error("[" + index + "] Bulk import error: "
                             + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
-                    statisticsAggregator.onTermsAdded(getIndexSize());
+                    if (statisticsAggregator != null) {
+                        statisticsAggregator.onTermsAdded(getIndexSize());
+                    }
                 }
             });
         } else {
@@ -317,14 +323,18 @@ public class SuggestionIndex {
                     logger.info("[" + index + "] Finished Bulk import: "
                             + terms.size() + " terms");
                     listener.onComplete(timeMillis + response.getTookInMillis());
-                    statisticsAggregator.onTermsAdded(getIndexSize());
+                    if (statisticsAggregator != null) {
+                        statisticsAggregator.onTermsAdded(getIndexSize());
+                    }
                 }
 
                 public void onFailure(Throwable e) {
                     logger.error("[" + index + "] Bulk import error: "
                             + e.getMessage());
                     listener.onError(new Exception(e.getMessage()));
-                    statisticsAggregator.onTermsAdded(getIndexSize());
+                    if (statisticsAggregator != null) {
+                        statisticsAggregator.onTermsAdded(getIndexSize());
+                    }
                 }
             });
         }
@@ -376,7 +386,9 @@ public class SuggestionIndex {
 
             public void onResponse(BulkResponse response) {
                 listener.onComplete(response.getTookInMillis());
-                statisticsAggregator.onTermAdded(getIndexSize());
+                if (statisticsAggregator != null) {
+                    statisticsAggregator.onTermAdded(getIndexSize());
+                }
             }
 
             public void onFailure(Throwable e) {
@@ -409,7 +421,9 @@ public class SuggestionIndex {
             public void onResponse(DeleteResponse response) {
                 listener.onComplete(response.isFound());
                 if (response.isFound()) {
-                    statisticsAggregator.onTermDeleted();
+                    if (statisticsAggregator != null) {
+                        statisticsAggregator.onTermDeleted();
+                    }
                 }
             }
 
@@ -448,7 +462,9 @@ public class SuggestionIndex {
 
             public void onResponse(BulkResponse response) {
                 listener.onComplete(response.getTookInMillis());
-                statisticsAggregator.onTermsDeleted(getIndexSize());
+                if (statisticsAggregator != null) {
+                    statisticsAggregator.onTermsDeleted(getIndexSize());
+                }
             }
 
             public void onFailure(Throwable e) {
@@ -534,8 +550,10 @@ public class SuggestionIndex {
                             public void
                                 onComplete(List<Suggestion> suggestions) {
                                 listener.onComplete(suggestions);
-                                statisticsAggregator.onQuery(userData,
-                                        suggestRequest, suggestions);
+                                if (statisticsAggregator != null) {
+                                    statisticsAggregator.onQuery(userData,
+                                            suggestRequest, suggestions);
+                                }
                             }
 
                             @Override
@@ -605,7 +623,9 @@ public class SuggestionIndex {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
+        if (statisticsAggregator != null) {
+            statisticsAggregator.onQuery(userData, suggestRequest, suggestions);
+        }
         return suggestions;
     }
 
@@ -1001,10 +1021,21 @@ public class SuggestionIndex {
      *            The index to be checked
      * @return <true> if the given index is valid
      */
-    public static void checkIndexValidity(String index)
+    private static void checkIndexValidity(String index)
             throws InvalidIndexNameException {
+        if (index.equals("")) {
+            throw new InvalidIndexNameException("An index must not be empty");
+        }
+
         if (!index.toLowerCase().equals(index)) {
             throw new InvalidIndexNameException("An index must be lowercase");
+        }
+
+        Pattern pattern = Pattern.compile("\\s");
+        Matcher matcher = pattern.matcher(index);
+        if (matcher.find()) {
+            throw new InvalidIndexNameException(
+                    "An index may not contain any whitespace character");
         }
     }
 
@@ -1013,7 +1044,9 @@ public class SuggestionIndex {
      * selected, timeout or query is deleted)
      */
     public void onSearchSessionFinished(AnalyticsData userData) {
-        statisticsAggregator.onSearchSessionFinished(userData);
+        if (statisticsAggregator != null) {
+            statisticsAggregator.onSearchSessionFinished(userData);
+        }
     }
 
     /**
@@ -1023,10 +1056,12 @@ public class SuggestionIndex {
             String suggestionID,
             String suggestionString,
             AnalyticsData userData) {
-        statisticsAggregator.onSuggestionSelected(suggestionID,
-                suggestionString, userData);
+        if (statisticsAggregator != null) {
+            statisticsAggregator.onSuggestionSelected(suggestionID,
+                    suggestionString, userData);
+        }
     }
-    
+
     /**
      * Returns the StatisticsAggregator to access all kind of analytics data
      * 

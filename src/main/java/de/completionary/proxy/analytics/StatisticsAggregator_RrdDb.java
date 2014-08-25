@@ -58,7 +58,7 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
                     }
                 }
             }
-        }, resolutions[0] * 900, resolutions[0] * 900);
+        }, resolutions[0] * 1000, resolutions[0] * 1000);
         System.out.println("StatisticsDispatcher started");
     }
 
@@ -88,7 +88,7 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
      */
     private RrdDb openDB() throws IOException {
         final RrdDef rrdDef = generateRrdDef();
-        System.out.println("Opening RRD file");
+        System.out.println("Opening RRD file " + rrdDef.getPath());
         RrdDb rrdDb = new RrdDb(rrdDef);
         if (rrdDb.getRrdDef().equals(rrdDef)) {
             System.out.println("Checking RRD file structure... OK");
@@ -142,7 +142,8 @@ public class StatisticsAggregator_RrdDb extends AStatisticsAggregator {
                                                             */, rows[i]);
         }
 
-        System.out.println("Estimated RRD file size: " + rrdDef.getEstimatedSize()/1E6+" MB");
+        System.out.println("Estimated RRD file size: "
+                + rrdDef.getEstimatedSize() / 1E6 + " MB");
         return rrdDef;
     }
 

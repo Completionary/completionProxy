@@ -30,13 +30,6 @@ public class AdminHandler implements AdminService.AsyncIface {
             IndexUnknownException {
 
         try {
-            SuggestionIndex.checkIndexValidity(index);
-        } catch (InvalidIndexNameException e) {
-            resultHandler.onError(e);
-            return;
-        }
-
-        try {
             SuggestionIndex.getIndex(index).async_addSingleTerm(ID, inputs,
                     output, payload, weight, new AsyncMethodCallback<Long>() {
 
@@ -63,13 +56,6 @@ public class AdminHandler implements AdminService.AsyncIface {
             final AsyncMethodCallback resultHandler)
             throws InvalidIndexNameException, ServerDownException,
             IndexUnknownException {
-        try {
-            SuggestionIndex.checkIndexValidity(index);
-        } catch (InvalidIndexNameException e) {
-            resultHandler.onError(e);
-            return;
-        }
-
         try {
             SuggestionIndex.getIndex(index).async_addTerms(terms,
                     new AsyncMethodCallback<Long>() {

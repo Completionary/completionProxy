@@ -3,6 +3,7 @@ package de.completionary.proxy.analytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.completionary.proxy.helper.ProxyOptions;
 import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 
 /**
@@ -25,40 +26,22 @@ import de.completionary.proxy.thrift.services.suggestion.AnalyticsData;
 
 public class LoggingHandler {
 
-    private static boolean isActive = true;
-
     final static Logger logger = LoggerFactory.getLogger(LoggingHandler.class);
 
     public LoggingHandler() {
         logger.info("Entering application.");
     }
 
-    /**
-     * May be used for unit tests to disable logging
-     */
-    public static void disableLogging() {
-        isActive = false;
-    }
-
-    /**
-     * May be used for unit tests to re-enable logging
-     */
-    public static void reenableLogging() {
-        isActive = true;
-    }
-
     public void logQuery(
             final AnalyticsData userData,
             final String suggestRequest) {
-        if (isActive) {
-            StringBuilder builder = new StringBuilder();
-            builder.append("Q\t");
-            builder.append(suggestRequest);
-            builder.append('\t');
-            appendUserData(userData, builder);
+        StringBuilder builder = new StringBuilder();
+        builder.append("Q\t");
+        builder.append(suggestRequest);
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-            logger.info(builder.toString());
-        }
+        logger.info(builder.toString());
     }
 
     /**
@@ -69,15 +52,13 @@ public class LoggingHandler {
     public void logSuggestionSelected(
             final AnalyticsData userData,
             final String suggestionID) {
-        if (isActive) {
-            StringBuilder builder = new StringBuilder();
-            builder.append("S\t");
-            builder.append(suggestionID);
-            builder.append('\t');
-            appendUserData(userData, builder);
+        StringBuilder builder = new StringBuilder();
+        builder.append("S\t");
+        builder.append(suggestionID);
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-            logger.info(builder.toString());
-        }
+        logger.info(builder.toString());
     }
 
     /**
@@ -86,23 +67,19 @@ public class LoggingHandler {
      *            The ID of the selected suggestion
      */
     public void logSessionFinished(final AnalyticsData userData) {
-        if (isActive) {
-            StringBuilder builder = new StringBuilder();
-            builder.append("F\t");
-            builder.append('\t');
-            appendUserData(userData, builder);
+        StringBuilder builder = new StringBuilder();
+        builder.append("F\t");
+        builder.append('\t');
+        appendUserData(userData, builder);
 
-            logger.info(builder.toString());
-        }
+        logger.info(builder.toString());
     }
 
     private void appendUserData(
             final AnalyticsData userData,
             final StringBuilder builder) {
-        if (isActive) {
-            builder.append(userData.userID);
-            builder.append('\t');
-            builder.append(userData.userAgent);
-        }
+        builder.append(userData.userID);
+        builder.append('\t');
+        builder.append(userData.userAgent);
     }
 }
